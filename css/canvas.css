@@ -1,0 +1,8 @@
+canvas 
+{
+      border: 2px solid black;
+      -moz-box-shadow: black 2px 2px 2px;
+      width: 800px;
+      height: 600px;
+      background-color: black;
+}
