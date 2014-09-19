@@ -33,9 +33,9 @@ Layer some geospatial data on your heightmap, e.g. loading user files, showing g
 
 Most of the geographic data is given in Mercator WGS84 (Latency + Longitude), however the elevation data from Statkart is given in UTM 33. To convert between these formats you can use the Proj4js library, one example of its usage is
 
-<code>var center = {x:600000,y:7600000}; //the center of the tileset in UTM33 datum</code>
-<code>var utm33 = '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs ';</code>
-<code>var narvik = proj4(utm33, [17.435281,68.435675]); //narvik[0] and narvik[1] holds our UTM33 datum</code>
+<code>var center = {x:600000,y:7600000}; //the center of the tileset in UTM33 datum</code><br>
+<code>var utm33 = '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs ';</code><br>
+<code>var narvik = proj4(utm33, [17.435281,68.435675]); //narvik[0] and narvik[1] holds our UTM33 datum</code><br>
 
 	
 <h2>Interactivity</h2>	
