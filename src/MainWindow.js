@@ -1,4 +1,16 @@
 /**
+http://toddmotto.com/mastering-the-module-pattern/
+http://www.bookofspeed.com/chapter3.html
+http://javascript.crockford.com/private.html
+http://learningwebgl.com/blog/?p=28
+http://www.w3schools.com/js/js_whereto.asp
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript
+https://google-styleguide.googlecode.com/svn/trunk/javascriptguide.xml#delete
+https://google-styleguide.googlecode.com/svn/trunk/htmlcssguide.xml
+*/
+
+
+/**
  * 	MainWindow module
  */
 var MainWindow = (function() {
