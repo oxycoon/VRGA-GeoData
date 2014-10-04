@@ -1,3 +1,12 @@
+
+	//Checks if WebGl is supported.
+	if ( ! Detector.webgl ) {
+
+		Detector.addGetWebGLMessage();
+		document.getElementById( 'container' ).innerHTML ='";
+
+	}
+	
 	var scene;
 	var camera;
 	var renderer;
@@ -27,7 +36,7 @@
 		testMatr = new THREE.MeshBasicMaterial({color: 0x00ff00});
 		testCube = new THREE.Mesh(testGeo, testMatr);
 		scene.add(testCube);
-		var data = initHeightMap('..\res\maps\narvik.png');
+		addTerrainUsingHeightMap('..\\res\\maps\\narvik.png');
 
 		camera.position.z = 5;
 	}
@@ -40,25 +49,23 @@
 		renderer.render(scene,camera);
 	}
 	
-	
-	function initHeightMap(path){
-		var img = new Image();
-		img.src = path;
+	//http://www.smartjava.org/content/threejs-render-real-world-terrain-heightmap-using-open-data
+	function addTerrainUsingHeightMap(path){
+		var heightMap = THREE.ImageUtils.loadTexture(path);
+		var texture = THREE.ImageUtils.loadTexture('..\\res\\textures\\sand.jpg');;
 		
-		var size = img.width * img.height;
-		var data = new Uint8Array( size );
+		var terrainShader = THREE.ShaderTerrain['terrain'];
+		var uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
 		
-		var tempCanvas = document.createElement('canvas');
-		var context = tempCanvas.getContext('2d');
-		context.drawImage(img,0,0);
-
-		for(i = 0; i < img.height; i++){
-			for(j = 0; j < img.width; j++){
-				data.push(context.getImageData(j,i,1,1).data);
-			}
-		}
+		//Sets the heightmap
+		uniformsTerrain['tDisplacement'].texture = heightMap;
+		uniformsTerrain['uNormalScale'].value = 1;
 		
-		return data;
+		uniformsTerrain['tDiffuse1'].texture = texture;
+        uniformsTerrain['tDetail'].texture = texture;
+        uniformsTerrain['enableDiffuse1'].value = true;
+        uniformsTerrain['enableDiffuse2'].value = true;
+        uniformsTerrain['enableSpecular'].value = true;
 	}
 
 	

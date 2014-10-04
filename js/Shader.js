@@ -1,6 +1,0 @@
-THREE.Shader = {
-
-	'terrain' : {
-	
-	}
-};
