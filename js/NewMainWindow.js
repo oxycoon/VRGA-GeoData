@@ -15,17 +15,19 @@
 	var testMatr;
 	var testCube;
 
-	var world, worldTexture;
-	var worldWidth, worldHeight;
-	var meshList;
+	var terrain;
 	
 	var clock = new THREE.Clock();
 	
-	var n =0;
+	var textureCounter = 0;
 	
 	init();
-	//render();
-
+	render();
+	
+	//--------------------------
+	//	Initialization logic
+	//--------------------------
+	
 	function init(){
 		scene = new THREE.Scene();
 		
@@ -39,6 +41,8 @@
 		renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
+		
+		initControllers();
 
 		//testGeo = new THREE.PlaneGeometry(512, 512, 128, 128);//new THREE.BoxGeometry(1,1,1);
 		//testGeo.applyMatrix(new THREE.Matrix4().makeRotationX( -Math.PI / 2)); //rotates plane
@@ -46,20 +50,20 @@
 		//testCube = new THREE.Mesh(testGeo, testMatr);
 		//scene.add(testCube);
 		
-		       // add a light
+		// add a light
         var pointLight = new THREE.PointLight(0xFFFFFF);
         scene.add(pointLight);
-		pointLight.position.x = 1000;
-        pointLight.position.y = 3000;
-        pointLight.position.z = -1000;
+		pointLight.position.x = 0;
+        pointLight.position.y = 1000;
+        pointLight.position.z = 0;
         pointLight.intensity = 8.6;
 		
 		addTerrainUsingHeightMap('res/maps/narvik.png');
-/* 		var img = new Image();
+ 		/*var img = new Image();
 		img.onload = function() {
 			var data = getHeightData(img);
 			
-			var geometry = new THREE.PlaneGeometry(2000, 2000, 256, 256); //bug exists here, can't find reason
+			var geometry = new THREE.PlaneGeometry(2000, 2000, 511, 511); //bug exists here, can't find reason
 			geometry.applyMatrix(new THREE.Matrix4().makeRotationX( -Math.PI / 2));
 			var texture = THREE.ImageUtils.loadTexture('res/textures/sand.jpg');
 			var material = new THREE.MeshLambertMaterial( { map: texture } );
@@ -69,20 +73,20 @@
 			for(var i = 0; i < plane.geometry.vertices.length; i++){
 				plane.geometry.vertices[i].y = data[i];
 			}
+			//TESTING
+			//plane.rotation.x = -Math.PI / 2;
 			
 			scene.add(plane);
 		};
-		img.src = 'res/maps/narvik.png'; */
-
-
+		img.src = 'res/maps/narvik_scale.png';*/
 	}
-
-	function render(){
-		requestAnimationFrame(render);
-		//testCube.rotation.x += 0.1;
-		//testCube.rotation.y += 0.1;
-
-		renderer.render(scene,camera);
+	
+	function initControllers(){
+		//document.addEventListener('mousemove', onDocumentMouseMove, false);
+		window.addEventListener('resize', onWindowResize, false);
+		controls = new THREE.FirstPersonControls(camera);
+		controls.movementSpeed = 100;
+		controls.lookSpeed = 0.05;
 	}
 	
 	//http://www.smartjava.org/content/threejs-render-real-world-terrain-heightmap-using-open-data
@@ -91,78 +95,85 @@
 	*	@param {string} path This string is the path to the height map to load.
 	*/
 	function addTerrainUsingHeightMap(path){
-		//Load heightmap as texture
-		console.log('Loading heightmap: ' + path);
-		var heightMap = THREE.ImageUtils.loadTexture(path);
-		//Load diffuse texture
-		console.log('Loading texture: /res/textures/sand.jpg');
-		var texture = THREE.ImageUtils.loadTexture('/res/textures/sand.jpg');
+		// load the heightmap we created as a texture
+		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
+ 
+        // load two other textures we'll use to make the map look more real
+        var detailTexture = THREE.ImageUtils.loadTexture("res/textures/grass.jpg", null, loadTextures);
+		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
 		
-		//terrain shader
-		console.log('Initializing terrain shader');
-		var terrainShader = THREE.ShaderTerrain[ 'terrain' ];
+		var diffuseTexture = THREE.ImageUtils.loadTexture("res/textures/sand.jpg", null, loadTextures);
+		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
+ 
+       // Terrain shader
+        var terrainShader = THREE.ShaderTerrain[ "terrain" ];
         var uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
+ 
+        // how to treat abd scale the normal texture
+        uniformsTerrain[ "tNormal" ].texture = detailTexture;
+        uniformsTerrain[ "uNormalScale" ].value = 3.5;
+ 
+        // the displacement determines the height of a vector, mapped to
+        // the heightmap
+        uniformsTerrain[ "tDisplacement" ].texture = heightMap;
+        uniformsTerrain[ "uDisplacementScale" ].value = 100;
+ 
+		uniformsTerrain[ "enableDiffuse1" ].value = true;
+		uniformsTerrain[ "enableSpecular" ].value = true;
 		
-		console.log('Initialing uniforms');
-		//Sets the heightmap
-		uniformsTerrain['tDisplacement'].texture = heightMap;
-		uniformsTerrain['uDisplacementScale'].value = 100;
-		
-		// how to treat abd scale the normal texture
-        uniformsTerrain[ 'tNormal' ].texture = texture;
-        uniformsTerrain[ 'uNormalScale' ].value = 1;
-
-		uniformsTerrain['tDiffuse1'].texture = texture;
-        uniformsTerrain['tDetail'].texture = texture;
-        uniformsTerrain['enableDiffuse1'].value = true;
-        uniformsTerrain['enableDiffuse2'].value = true;
-        uniformsTerrain['enableSpecular'].value = true;
-		
-		// diffuse is based on the light reflection
-		uniformsTerrain[ 'uDiffuseColor' ].value.setHex(0xcccccc);
-        uniformsTerrain[ 'uSpecularColor' ].value.setHex(0xff0000);
-        // is the base color of the terrain
-        uniformsTerrain[ 'uAmbientColor' ].value.setHex(0x0000cc);
+        uniformsTerrain[ "tDiffuse1" ].texture = diffuseTexture;
+        uniformsTerrain[ "tDetail" ].texture = detailTexture;
+ 
+        // Light settings
+        uniformsTerrain[ "diffuse" ].value.setHex(0xffffff );
+        uniformsTerrain[ "specular" ].value.setHex(0xffffff );
+        uniformsTerrain[ "ambient" ].value.setHex(0x111111 );
  
         // how shiny is the terrain
-        uniformsTerrain[ 'uShininess' ].value = 3;
+        uniformsTerrain[ "shininess" ].value = 30;
  
         // handles light reflection
-        uniformsTerrain[ 'uRepeatOverlay' ].value.set(3, 3);
+        uniformsTerrain[ "uRepeatOverlay" ].value.set(3, 3);
  
-		console.log('Initializing material')
         // configure the material that reflects our terrain
-        var material = new THREE.ShaderMaterial({
+        /*var material = new THREE.ShaderMaterial({
             uniforms:uniformsTerrain,
             vertexShader:terrainShader.vertexShader,
             fragmentShader:terrainShader.fragmentShader,
             lights:true,
             fog:false
-        });
-		//var material = new THREE.MeshLambertMaterial( { map: texture } );
+        }); */
 		
-		console.log('Initializing geometry');
-		var geometryTerrain = new THREE.PlaneGeometry(2000, 2000, 256, 256);
-		geometryTerrain.applyMatrix(new THREE.Matrix4().makeRotationX( Math.PI / 2)); //rotates plane
-        geometryTerrain.computeFaceNormals();
-        geometryTerrain.computeVertexNormals();
+		var material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+		
+		
+ 
+        // we use a plain to render as terrain
+        var geometryTerrain = new THREE.PlaneGeometry(2000, 2000, 256, 256);
         geometryTerrain.computeTangents();
  
         // create a 3D object to add
-		console.log('Initializing mesh');
-        var terrain = new THREE.Mesh(geometryTerrain, material);
+        terrain = new THREE.Mesh(geometryTerrain, material);
         terrain.position.set(0, -125, 0);
         terrain.rotation.x = -Math.PI / 2;
+		//terrain.visible = false;
  
         // add the terrain
-		console.log('Adding mesh to scene');
         scene.add(terrain);
 
 	}
 	
+	function loadTextures(){
+		textureCounter += 1;
+		
+		if(textureCounter == 3){
+			//terrain.visible = true;
+		}
+	}
+	
 	//http://danni-three.blogspot.no/2013/09/threejs-heightmaps.html
 	function getHeightData(img,scale){
-		if(scale===undefined) scale = 1;
+		if(scale==undefined) scale = 1;
 		
 		var canv = document.createElement('canvas');
 		canv.width = img.width;
@@ -171,13 +182,13 @@
 		var cont = canv.getContext('2d');
 		
 		var size = img.width * img.height;
-		data = new Float32Array(size);
+		var data = new Float32Array(size);
 		
 		cont.drawImage(img,0,0);
 		for( var i=0; i < size; i++){
 			data[i] = 0;
 		}
-		var imageData = cont.getImageData(0,0,img.width,img.height);
+		var imageData = cont.getImageData(0, 0, img.width, img.height);
 		var pixels = imageData.data;
 		
 		var j = 0;
@@ -187,6 +198,37 @@
 		}
 		return data;
 	}
+	
+	//--------------------------
+	//	Event handlers
+	//--------------------------
+	
+	/**
+	*	Updates the camera aspects when window is resized.
+	*/
+	function onWindowResize(){
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		
+		controls.handleResize();
+	}
+	
+	function onDocumentMouseMove(){
+	
+	}
 
+	//--------------------------
+	//	Render and update logic
+	//--------------------------
+	
+	function render(){
+		requestAnimationFrame(render);
+		//testCube.rotation.x += 0.1;
+		//testCube.rotation.y += 0.1;
+
+		renderer.render(scene,camera);
+	}
 	
 
