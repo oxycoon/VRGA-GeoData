@@ -44,21 +44,15 @@
 		
 		initControllers();
 
-		//testGeo = new THREE.PlaneGeometry(512, 512, 128, 128);//new THREE.BoxGeometry(1,1,1);
-		//testGeo.applyMatrix(new THREE.Matrix4().makeRotationX( -Math.PI / 2)); //rotates plane
-		//testMatr = new THREE.MeshBasicMaterial({color: 0x00ff00});
-		//testCube = new THREE.Mesh(testGeo, testMatr);
-		//scene.add(testCube);
-		
 		// add a light
         var pointLight = new THREE.PointLight(0xFFFFFF);
         scene.add(pointLight);
 		pointLight.position.x = 0;
-        pointLight.position.y = 1000;
+        pointLight.position.y = 8000;
         pointLight.position.z = 0;
         pointLight.intensity = 8.6;
 		
-		addTerrainUsingHeightMap('res/maps/narvik.png');
+		addTerrainUsingHeightMap('res/maps/narvik_scale.png');
  		/*var img = new Image();
 		img.onload = function() {
 			var data = getHeightData(img);
@@ -88,6 +82,17 @@
 		controls.movementSpeed = 100;
 		controls.lookSpeed = 0.05;
 	}
+
+	/*function addTerrainUsingHeightMap(path){
+		var heightMap = new THREE.ImageUtils.loadTexture(path);
+
+
+		var shader = THREE.ShaderTerrain['terrain'];
+		var uniforms = THREE.UniformsUtils.clone(shader.uniforms);
+
+
+		//console.log(heightMap.src);
+	}*/
 	
 	//http://www.smartjava.org/content/threejs-render-real-world-terrain-heightmap-using-open-data
 	/**
@@ -99,7 +104,7 @@
 		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
  
         // load two other textures we'll use to make the map look more real
-        var detailTexture = THREE.ImageUtils.loadTexture("res/textures/grass.jpg", null, loadTextures);
+        var detailTexture = THREE.ImageUtils.loadTexture("res/textures/grass.JPG", null, loadTextures);
 		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
 		
 		var diffuseTexture = THREE.ImageUtils.loadTexture("res/textures/sand.jpg", null, loadTextures);
@@ -110,19 +115,20 @@
         var uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
  
         // how to treat abd scale the normal texture
-        uniformsTerrain[ "tNormal" ].texture = detailTexture;
+        uniformsTerrain[ "tNormal" ].value = heightMap;
         uniformsTerrain[ "uNormalScale" ].value = 3.5;
  
         // the displacement determines the height of a vector, mapped to
         // the heightmap
-        uniformsTerrain[ "tDisplacement" ].texture = heightMap;
+        uniformsTerrain[ "tDisplacement" ].value = heightMap;
         uniformsTerrain[ "uDisplacementScale" ].value = 100;
+        uniformsTerrain[ "uDisplacementBias" ].value = 1.0;
  
 		uniformsTerrain[ "enableDiffuse1" ].value = true;
-		uniformsTerrain[ "enableSpecular" ].value = true;
+		//uniformsTerrain[ "enableSpecular" ].value = true;
 		
-        uniformsTerrain[ "tDiffuse1" ].texture = diffuseTexture;
-        uniformsTerrain[ "tDetail" ].texture = detailTexture;
+        uniformsTerrain[ "tDiffuse1" ].value = detailTexture;
+        uniformsTerrain[ "tDetail" ].value = heightMap;
  
         // Light settings
         uniformsTerrain[ "diffuse" ].value.setHex(0xffffff );
@@ -136,15 +142,15 @@
         uniformsTerrain[ "uRepeatOverlay" ].value.set(3, 3);
  
         // configure the material that reflects our terrain
-        /*var material = new THREE.ShaderMaterial({
+        var material = new THREE.ShaderMaterial({
             uniforms:uniformsTerrain,
             vertexShader:terrainShader.vertexShader,
             fragmentShader:terrainShader.fragmentShader,
             lights:true,
             fog:false
-        }); */
+        }); 
 		
-		var material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+		//var material = new THREE.MeshBasicMaterial({color: 0x00ff00});
 		
 		
  

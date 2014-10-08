@@ -25855,6 +25855,8 @@ THREE.ImageUtils = {
 
 		texture.sourceFile = url;
 
+
+
 		return texture;
 
 	},
