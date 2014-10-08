@@ -47,9 +47,9 @@
 		// add a light
         var pointLight = new THREE.PointLight(0xFFFFFF);
         scene.add(pointLight);
-		pointLight.position.x = 0;
-        pointLight.position.y = 8000;
-        pointLight.position.z = 0;
+		pointLight.position.x = 1000;
+        pointLight.position.y = 3000;
+        pointLight.position.z = -1000;
         pointLight.intensity = 8.6;
 		
 		addTerrainUsingHeightMap('res/maps/narvik_scale.png');
@@ -109,34 +109,39 @@
 		
 		var diffuseTexture = THREE.ImageUtils.loadTexture("res/textures/sand.jpg", null, loadTextures);
 		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
+
+		var diffuseTexture2 = THREE.ImageUtils.loadTexture("res/textures/bg.jpg", null, loadTextures);
+		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
  
        // Terrain shader
         var terrainShader = THREE.ShaderTerrain[ "terrain" ];
         var uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
  
         // how to treat abd scale the normal texture
-        uniformsTerrain[ "tNormal" ].value = heightMap;
-        uniformsTerrain[ "uNormalScale" ].value = 3.5;
+        //uniformsTerrain[ "tNormal" ].value = diffuseTexture2;
+        //uniformsTerrain[ "uNormalScale" ].value = 3.0;
  
         // the displacement determines the height of a vector, mapped to
         // the heightmap
         uniformsTerrain[ "tDisplacement" ].value = heightMap;
         uniformsTerrain[ "uDisplacementScale" ].value = 100;
-        uniformsTerrain[ "uDisplacementBias" ].value = 1.0;
+        //uniformsTerrain[ "uDisplacementBias" ].value = 1.0;
  
-		uniformsTerrain[ "enableDiffuse1" ].value = true;
+		//uniformsTerrain[ "enableDiffuse1" ].value = true;
+		//uniformsTerrain[ "enableDiffuse2" ].value = true;
 		//uniformsTerrain[ "enableSpecular" ].value = true;
 		
-        uniformsTerrain[ "tDiffuse1" ].value = detailTexture;
-        uniformsTerrain[ "tDetail" ].value = heightMap;
+        uniformsTerrain[ "tDiffuse1" ].value = diffuseTexture2;
+        uniformsTerrain[ "tDiffuse2" ].value = diffuseTexture2;
+        uniformsTerrain[ "tDetail" ].value = detailTexture;
  
         // Light settings
-        uniformsTerrain[ "diffuse" ].value.setHex(0xffffff );
-        uniformsTerrain[ "specular" ].value.setHex(0xffffff );
-        uniformsTerrain[ "ambient" ].value.setHex(0x111111 );
+        uniformsTerrain[ "diffuse" ].value.setHex(0xcccccc );
+        uniformsTerrain[ "specular" ].value.setHex(0xff0000 );
+        uniformsTerrain[ "ambient" ].value.setHex(0x0000cc );
  
         // how shiny is the terrain
-        uniformsTerrain[ "shininess" ].value = 30;
+        uniformsTerrain[ "shininess" ].value = 3;
  
         // handles light reflection
         uniformsTerrain[ "uRepeatOverlay" ].value.set(3, 3);
@@ -166,6 +171,10 @@
  
         // add the terrain
         scene.add(terrain);
+
+	}
+
+	function calculateNormals(image){
 
 	}
 	
