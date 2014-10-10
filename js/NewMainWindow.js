@@ -11,11 +11,17 @@
 	var camera;
 	var renderer;
 
-	var testGeo;
-	var testMatr;
-	var testCube;
+	//Lights
+	var lightVal = 0, lightDirection = 1;
+	var pointLight, directionalLight;
+
+	//Shader uniforms
+	var uniformsTerrain, uniformsNormal;
+
 
 	var terrain;
+
+	var materialLibrary = {};
 	
 	var clock = new THREE.Clock();
 	
@@ -44,14 +50,20 @@
 		
 		initControllers();
 
-		// add a light
-        var pointLight = new THREE.PointLight(0xFFFFFF);
+		// Lights
+        pointLight = new THREE.PointLight(0xFFFFFF);
         scene.add(pointLight);
 		pointLight.position.x = 1000;
         pointLight.position.y = 3000;
         pointLight.position.z = -1000;
         pointLight.intensity = 8.6;
 		
+        directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
+        directionalLight.position.set(500, 2000, 0);
+        scene.add(directionalLight);
+
+		scene.add( new THREE.AmbientLight( 0x111111 ) );
+
 		addTerrainUsingHeightMap('res/maps/narvik_scale.png');
  		/*var img = new Image();
 		img.onload = function() {
@@ -79,8 +91,15 @@
 		//document.addEventListener('mousemove', onDocumentMouseMove, false);
 		window.addEventListener('resize', onWindowResize, false);
 		controls = new THREE.FirstPersonControls(camera);
-		controls.movementSpeed = 100;
-		controls.lookSpeed = 0.05;
+		controls.movementSpeed = 500;
+		controls.lookSpeed = 0.20;
+		/*controls.rotateSpeed = 1.0;
+		controls.zoomSpeed = 1.2;
+		controls.panSpeed = 0.8;
+		controls.noZoom = false;
+		controls.noPan = false;
+		controls.staticMoving = false;
+		controls.dynamicDampingFactor = 0.15;*/
 	}
 
 	/*function addTerrainUsingHeightMap(path){
@@ -100,31 +119,51 @@
 	*	@param {string} path This string is the path to the height map to load.
 	*/
 	function addTerrainUsingHeightMap(path){
-		// load the heightmap we created as a texture
+		// load the heightmap as a texture
 		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
  
-        // load two other textures we'll use to make the map look more real
-        var detailTexture = THREE.ImageUtils.loadTexture("res/textures/grass.JPG", null, loadTextures);
-		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
+        // Loading textures
+        /*var detailTexture = THREE.ImageUtils.loadTexture("res/textures/grass.JPG", null, loadTextures);
+		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;*/
 		
 		var diffuseTexture = THREE.ImageUtils.loadTexture("res/textures/sand.jpg", null, loadTextures);
 		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
 
 		var diffuseTexture2 = THREE.ImageUtils.loadTexture("res/textures/bg.jpg", null, loadTextures);
 		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
+
+		var detailTexture = THREE.ImageUtils.loadTexture("res/textures/bg.jpg", null, loadTextures);
+		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
  
-       // Terrain shader
-        var terrainShader = THREE.ShaderTerrain[ "terrain" ];
-        var uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
- 
-        // how to treat abd scale the normal texture
-        //uniformsTerrain[ "tNormal" ].value = diffuseTexture2;
-        //uniformsTerrain[ "uNormalScale" ].value = 3.0;
+
+
+		// Normal Shader
+		var normalShader = THREE.NormalMapShader;
+		uniformsNormal = THREE.UniformsUtils.clone(normalShader.uniforms);
+
+		var rx = 256, ry = 256;
+		var pars = { minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat };
+		var normalMap = new THREE.WebGLRenderTarget(rx, ry, pars);
+
+		uniformsNormal.height.value = 100;
+		uniformsNormal.resolution.value.set(rx,ry);
+		uniformsNormal.heightMap.value = heightMap;
+
+        //var vertShader = document.getElementById('vertexShader').textContent;
+
+
+       	// Terrain shader
+        var terrainShader = THREE.ShaderTerrain[ 'terrain' ];
+        uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
+
+
+        uniformsTerrain[ "tNormal" ].value = diffuseTexture2;
+        uniformsTerrain[ "uNormalScale" ].value = 3.0;
  
         // the displacement determines the height of a vector, mapped to
         // the heightmap
         uniformsTerrain[ "tDisplacement" ].value = heightMap;
-        uniformsTerrain[ "uDisplacementScale" ].value = 100;
+        uniformsTerrain[ "uDisplacementScale" ].value = 195.18;
         //uniformsTerrain[ "uDisplacementBias" ].value = 1.0;
  
 		//uniformsTerrain[ "enableDiffuse1" ].value = true;
@@ -145,27 +184,46 @@
  
         // handles light reflection
         uniformsTerrain[ "uRepeatOverlay" ].value.set(3, 3);
+
+        uniformsTerrain[ "enableColorHeight"].value = true;
+
+		var parameters = [
+				['normal', normalShader.fragmentShader, normalShader.vertexShader, uniformsNormal, false],
+				['terrain', terrainShader.fragmentShader, terrainShader.vertexShader, uniformsTerrain, true]
+		];
  
+		for(var i = 0; i < parameters.length; i++){
+			var material = new THREE.ShaderMaterial({
+				uniforms: parameters[i][3],
+				vertexShader: parameters[i][2],
+				fragmentShader: parameters[i][1],
+				lights: parameters[i][4],
+				fog: false
+			});
+			materialLibrary[parameters[i][0]] = material;
+		}
+		
+
         // configure the material that reflects our terrain
-        var material = new THREE.ShaderMaterial({
+       /*var material = new THREE.ShaderMaterial({
             uniforms:uniformsTerrain,
             vertexShader:terrainShader.vertexShader,
             fragmentShader:terrainShader.fragmentShader,
             lights:true,
             fog:false
-        }); 
+        });*/
 		
 		//var material = new THREE.MeshBasicMaterial({color: 0x00ff00});
 		
 		
  
         // we use a plain to render as terrain
-        var geometryTerrain = new THREE.PlaneGeometry(2000, 2000, 256, 256);
+        var geometryTerrain = new THREE.PlaneGeometry(5120, 5120, 256, 256);
         geometryTerrain.computeTangents();
  
         // create a 3D object to add
-        terrain = new THREE.Mesh(geometryTerrain, material);
-        terrain.position.set(0, -125, 0);
+        terrain = new THREE.Mesh(geometryTerrain, materialLibrary['terrain']);//materialLibrary['terrain']);
+        terrain.position.set(0, -3, 0);
         terrain.rotation.x = -Math.PI / 2;
 		//terrain.visible = false;
  
@@ -174,9 +232,6 @@
 
 	}
 
-	function calculateNormals(image){
-
-	}
 	
 	function loadTextures(){
 		textureCounter += 1;
@@ -185,35 +240,7 @@
 			//terrain.visible = true;
 		}
 	}
-	
-	//http://danni-three.blogspot.no/2013/09/threejs-heightmaps.html
-	function getHeightData(img,scale){
-		if(scale==undefined) scale = 1;
-		
-		var canv = document.createElement('canvas');
-		canv.width = img.width;
-		canv.height = img.height;
-		
-		var cont = canv.getContext('2d');
-		
-		var size = img.width * img.height;
-		var data = new Float32Array(size);
-		
-		cont.drawImage(img,0,0);
-		for( var i=0; i < size; i++){
-			data[i] = 0;
-		}
-		var imageData = cont.getImageData(0, 0, img.width, img.height);
-		var pixels = imageData.data;
-		
-		var j = 0;
-		for(var i = 0; i < size; i+= 4){
-			var all = pixels[i] + pixels[i+1] + pixels[i+2];
-			data[j++] = all / (12*scale);
-		}
-		return data;
-	}
-	
+
 	//--------------------------
 	//	Event handlers
 	//--------------------------
@@ -242,8 +269,30 @@
 		requestAnimationFrame(render);
 		//testCube.rotation.x += 0.1;
 		//testCube.rotation.y += 0.1;
+		var delta = clock.getDelta();
 
-		renderer.render(scene,camera);
+		//controls.update();
+		
+
+		if(terrain.visible){
+			//console.log(camera.position);
+			controls.update(delta);
+
+
+			var time = Date.now() * 0.001;
+			var fLow = 0.1, fHigh = 0.8;
+
+			lightVal = THREE.Math.clamp(lightVal + 0.5 * delta * lightDirection, fLow, fHigh);
+			var valNorm = (lightVal - fLow) / (fHigh - fLow);
+
+			directionalLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.1, 1.15);
+			pointLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.9, 1.15);
+
+			uniformsTerrain['uNormalScale'].value = THREE.Math.mapLinear(valNorm, 0, 1, 0.6, 3.5);
+
+
+			renderer.render(scene,camera);
+		}
 	}
 	
 

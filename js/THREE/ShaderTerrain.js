@@ -1,4 +1,10 @@
 /**
+ *	Modifications done by Daniel
+ *
+ *
+ */
+
+/**
  * @author alteredq / http://alteredqualia.com/
  *
  */
@@ -49,7 +55,9 @@ THREE.ShaderTerrain = {
 			"uRepeatBase"    : { type: "v2", value: new THREE.Vector2( 1, 1 ) },
 			"uRepeatOverlay" : { type: "v2", value: new THREE.Vector2( 1, 1 ) },
 
-			"uOffset" : { type: "v2", value: new THREE.Vector2( 0, 0 ) }
+			"uOffset" : { type: "v2", value: new THREE.Vector2( 0, 0 ) },
+
+			"enableColorHeight" : { type: "i", value: 0},	//Added by daniel
 
 			}
 
@@ -85,8 +93,11 @@ THREE.ShaderTerrain = {
 			"varying vec3 vBinormal;",
 			"varying vec3 vNormal;",
 			"varying vec2 vUv;",
+			"varying float colorHeight;", 			//Added by daniel
 
 			"uniform vec3 ambientLightColor;",
+
+			"uniform bool enableColorHeight;",		//Added by daniel
 
 			"#if MAX_DIR_LIGHTS > 0",
 
@@ -128,6 +139,19 @@ THREE.ShaderTerrain = {
 				"vec3 normalTex = texture2D( tDetail, uvOverlay ).xyz * 2.0 - 1.0;",
 				"normalTex.xy *= uNormalScale;",
 				"normalTex = normalize( normalTex );",
+
+				"if(enableColorHeight){",										//\
+					"if(colorHeight > 0.85)",									// \
+						"gl_FragColor = vec4(vec3( 1.0 ), opacity);",			//  \
+					"else if(colorHeight > 0.65)",								//   |
+						"gl_FragColor = vec4(0.7, 0.7, 0.7, opacity);",			//   |
+					"else if(colorHeight > 0.25)",								//   |
+						"gl_FragColor = vec4(0.6, 0.6, 0.2, opacity);",			//   |- Added by Daniel
+					"else if(colorHeight > 0.01)",								//   |
+						"gl_FragColor = vec4(0.2, 1.0, 0.2, opacity);",			//   |
+					"else ",													//  /
+						"gl_FragColor = vec4(0.2, 0.8, 1.0, opacity);",			// /
+				"}",															///
 
 				"if( enableDiffuse1 && enableDiffuse2 ) {",
 
@@ -319,8 +343,11 @@ THREE.ShaderTerrain = {
 			"varying vec3 vBinormal;",
 			"varying vec3 vNormal;",
 			"varying vec2 vUv;",
+			"varying float colorHeight;",
 
 			"varying vec3 vViewPosition;",
+
+			"uniform bool enableColorHeight;",		//Added by daniel
 
 			THREE.ShaderChunk[ "shadowmap_pars_vertex" ],
 
@@ -351,6 +378,10 @@ THREE.ShaderTerrain = {
 
 					"vec4 worldPosition = modelMatrix * vec4( displacedPosition, 1.0 );",
 					"vec4 mvPosition = modelViewMatrix * vec4( displacedPosition, 1.0 );",
+
+					"if(enableColorHeight)",										//Added by Daniel
+						"colorHeight = displacedPosition.z / uDisplacementScale;",		//Added by Daniel
+
 
 				"#else",
 
