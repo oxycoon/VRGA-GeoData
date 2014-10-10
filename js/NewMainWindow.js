@@ -183,7 +183,7 @@
         uniformsTerrain[ "shininess" ].value = 3;
  
         // handles light reflection
-        uniformsTerrain[ "uRepeatOverlay" ].value.set(3, 3);
+        uniformsTerrain[ "uRepeatOverlay" ].value.set(6, 6);
 
         uniformsTerrain[ "enableColorHeight"].value = true;
 

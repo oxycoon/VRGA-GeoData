@@ -379,7 +379,7 @@ THREE.ShaderTerrain = {
 					"vec4 worldPosition = modelMatrix * vec4( displacedPosition, 1.0 );",
 					"vec4 mvPosition = modelViewMatrix * vec4( displacedPosition, 1.0 );",
 
-					"if(enableColorHeight)",										//Added by Daniel
+					"if(enableColorHeight)",											//Added by Daniel
 						"colorHeight = displacedPosition.z / uDisplacementScale;",		//Added by Daniel
 
 
