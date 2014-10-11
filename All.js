@@ -1,1 +1,0 @@
-<script src="MainWindow.js" type="text/javascript></script>

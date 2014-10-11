@@ -1,102 +1,306 @@
-/**
-http://toddmotto.com/mastering-the-module-pattern/
-http://www.bookofspeed.com/chapter3.html
-http://javascript.crockford.com/private.html
-http://learningwebgl.com/blog/?p=28
-http://www.w3schools.com/js/js_whereto.asp
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Introduction_to_Object-Oriented_JavaScript
-https://google-styleguide.googlecode.com/svn/trunk/javascriptguide.xml#delete
-https://google-styleguide.googlecode.com/svn/trunk/htmlcssguide.xml
-*/
 
+	//Checks if WebGl is supported.
+	if ( ! Detector.webgl ) {
 
-/**
- * 	MainWindow module
- */
-var MainWindow = (function() {
+		Detector.addGetWebGLMessage();
+		document.getElementById( 'container' ).innerHTML ='';
 
-	var gl;
-	var map;
+	}
 
+	var SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 1024;
 	
+	var scene;
+	var camera;
+	var renderer;
 
-	function stop(){
+	//Lights
+	var lightVal = 0, lightDirection = 1;
+	var spotLight, directionalLight;
 
-	}
+	//Shader uniforms
+	var uniformsTerrain, uniformsNormal;
 
-	function update(){
 
-	}
+	var terrain;
+	var materialLibrary = {};
+	
+	var clock = new THREE.Clock();
+	
+	var textureCounter = 0;
 
-	function render(){
-		gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-		gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+	//Proj4 variables
+	var utm33 = '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs ';
+	var center = {x:600000,y:7600000};
+	var narvik = proj4(utm33, [17.435281,68.435675]);
+	
+	init();
+	render();
+	
+	//--------------------------
+	//	Initialization logic
+	//--------------------------
+	
+	function init(){
+		scene = new THREE.Scene();
 		
-		//mat4.perspective(45, gl.viewportWidth / gl.viewportWidth, 0.1, 100.0, pMatrix);
-		//mat4.identity(mvMatrix);
-		//mat4.translate(mvMatrix,  [-1.5, 0.0, -7.0]);
-
+		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+		//camera.z = 5;
+		camera.position.x = 1000;
+		camera.position.y = 600;
+		camera.position.z = 1300;
+		camera.lookAt(scene.position);
 		
+		renderer = new THREE.WebGLRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+		
+		initControllers();
+
+		// Lights
+        spotLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2, 1 );
+        scene.add(spotLight);
+		spotLight.position.x = 2000;
+        spotLight.position.y = 6000;
+        spotLight.position.z = -2000;
+        spotLight.intensity = 17.2;
+        spotLight.target.position.set( 0, 0, 0 );
+
+        //Shadows cast by light
+        spotLight.castShadow = true;
+        spotLight.shadowCameraNear = 1200;
+        spotLight.shadowCameraFar = 2500;
+        spotLight.shadowCameraFov = 50;
+    	spotLight.shadowBias = 0.0001;
+		spotLight.shadowDarkness = 0.5;
+		spotLight.shadowMapWidth = SHADOW_MAP_WIDTH;
+		spotLight.shadowMapHeight = SHADOW_MAP_HEIGHT;
+		scene.add(spotLight);
+		
+        directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
+        directionalLight.position.set(1000, 4000, 0);
+        scene.add(directionalLight);
+
+		scene.add( new THREE.AmbientLight( 0x111111 ) );
+
+		addTerrainUsingHeightMap('res/maps/narvik_scale.png');
+ 		/*var img = new Image();
+		img.onload = function() {
+			var data = getHeightData(img);
+			
+			var geometry = new THREE.PlaneGeometry(2000, 2000, 511, 511); //bug exists here, can't find reason
+			geometry.applyMatrix(new THREE.Matrix4().makeRotationX( -Math.PI / 2));
+			var texture = THREE.ImageUtils.loadTexture('res/textures/sand.jpg');
+			var material = new THREE.MeshLambertMaterial( { map: texture } );
+			
+			var plane = new THREE.Mesh(geometry, material);
+			
+			for(var i = 0; i < plane.geometry.vertices.length; i++){
+				plane.geometry.vertices[i].y = data[i];
+			}
+			//TESTING
+			//plane.rotation.x = -Math.PI / 2;
+			
+			scene.add(plane);
+		};
+		img.src = 'res/maps/narvik_scale.png';*/
 	}
 	
-	function initGL(canvas){
-		gl = null;
-  
-		try {
-				// Try to grab the standard context. If it fails, fallback to experimental.
-				gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-				gl.viewportWidth = canvas.width;
-				gl.viewportHeight = canvas.height;
-		}
-		catch(e) {}
-	  
-		// If we don't have a GL context, give up now
-		if (!gl) {
-				alert("Unable to initialize WebGL. Your browser may not support it.");
-				gl = null;
-		}
-	  
-		return gl;
+	function initControllers(){
+		//document.addEventListener('mousemove', onDocumentMouseMove, false);
+		window.addEventListener('resize', onWindowResize, false);
+		controls = new THREE.FirstPersonControls(camera);
+		controls.movementSpeed = 500;
+		controls.lookSpeed = 0.20;
+		/*controls.rotateSpeed = 1.0;
+		controls.zoomSpeed = 1.2;
+		controls.panSpeed = 0.8;
+		controls.noZoom = false;
+		controls.noPan = false;
+		controls.staticMoving = false;
+		controls.dynamicDampingFactor = 0.15;*/
 	}
 	
-	function initBuffers(){
-		map = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, map);
+	//http://www.smartjava.org/content/threejs-render-real-world-terrain-heightmap-using-open-data
+	/**
+	*	
+	*	@param {string} path This string is the path to the height map to load.
+	*/
+	function addTerrainUsingHeightMap(path){
+		// load the heightmap as a texture
+		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
+ 
+        // Loading textures
+        /*var detailTexture = THREE.ImageUtils.loadTexture("res/textures/grass.JPG", null, loadTextures);
+		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;*/
 		
-		var vertices = [
-			 0.0,  1.0,  0.0,
-			-1.0, -1.0,  0.0,
-			 1.0, -1.0,  0.0
+		var diffuseTexture = THREE.ImageUtils.loadTexture("res/textures/sand.jpg", null, loadTextures);
+		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
+
+		var diffuseTexture2 = THREE.ImageUtils.loadTexture("res/textures/bg.jpg", null, loadTextures);
+		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
+
+		var detailTexture = THREE.ImageUtils.loadTexture("res/textures/bg.jpg", null, loadTextures);
+		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
+ 
+
+
+		// Normal Shader
+		var normalShader = THREE.NormalMapShader;
+		uniformsNormal = THREE.UniformsUtils.clone(normalShader.uniforms);
+
+		var rx = 256, ry = 256;
+		var pars = { minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat };
+		var normalMap = new THREE.WebGLRenderTarget(rx, ry, pars);
+
+		uniformsNormal.height.value = 100;
+		uniformsNormal.resolution.value.set(rx,ry);
+		uniformsNormal.heightMap.value = heightMap;
+
+       	// Terrain shader
+        var terrainShader = THREE.ShaderTerrain[ 'terrain' ];
+        uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
+
+
+        uniformsTerrain[ "tNormal" ].value = diffuseTexture2;
+        uniformsTerrain[ "uNormalScale" ].value = 3.0;
+ 
+        // the displacement determines the height of a vector, mapped to
+        // the heightmap
+        uniformsTerrain[ "tDisplacement" ].value = heightMap;
+        uniformsTerrain[ "uDisplacementScale" ].value = 195.18;
+        //uniformsTerrain[ "uDisplacementBias" ].value = 1.0;
+ 
+		//uniformsTerrain[ "enableDiffuse1" ].value = true;
+		//uniformsTerrain[ "enableDiffuse2" ].value = true;
+		//uniformsTerrain[ "enableSpecular" ].value = true;
+		
+        uniformsTerrain[ "tDiffuse1" ].value = diffuseTexture2;
+        uniformsTerrain[ "tDiffuse2" ].value = diffuseTexture2;
+        uniformsTerrain[ "tDetail" ].value = detailTexture;
+ 
+        // Light settings
+        uniformsTerrain[ "diffuse" ].value.setHex(0xcccccc );
+        uniformsTerrain[ "specular" ].value.setHex(0xff0000 );
+        uniformsTerrain[ "ambient" ].value.setHex(0x0000cc );
+ 
+        // how shiny is the terrain
+        uniformsTerrain[ "shininess" ].value = 3;
+ 
+        // handles light reflection
+        uniformsTerrain[ "uRepeatOverlay" ].value.set(6, 6);
+
+        uniformsTerrain[ "enableColorHeight"].value = true;
+
+		var parameters = [
+				['normal', normalShader.fragmentShader, normalShader.vertexShader, uniformsNormal, false],
+				['terrain', terrainShader.fragmentShader, terrainShader.vertexShader, uniformsTerrain, true]
 		];
+ 
+		for(var i = 0; i < parameters.length; i++){
+			var material = new THREE.ShaderMaterial({
+				uniforms: parameters[i][3],
+				vertexShader: parameters[i][2],
+				fragmentShader: parameters[i][1],
+				lights: parameters[i][4],
+				fog: false
+			});
+			materialLibrary[parameters[i][0]] = material;
+		}
 		
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        // configure the material that reflects our terrain
+       /*var material = new THREE.ShaderMaterial({
+            uniforms:uniformsTerrain,
+            vertexShader:terrainShader.vertexShader,
+            fragmentShader:terrainShader.fragmentShader,
+            lights:true,
+            fog:false
+        });*/
+		
+		//var material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+		
+		
+ 
+        // we use a plain to render as terrain
+        var geometryTerrain = new THREE.PlaneGeometry(512, 512, 256, 256);
+        geometryTerrain.computeTangents();
+ 
+        // create a 3D object to add
+        terrain = new THREE.Mesh(geometryTerrain, materialLibrary['terrain']);//materialLibrary['terrain']);
+        terrain.position.set(0, -3, 0);
+        terrain.rotation.x = -Math.PI / 2;
+        terrain.scale.set(20,20,2);
+        terrain.receiveShadow = true;
+        terrain.castShadow = true;
+		//terrain.visible = false;
+ 
+        // add the terrain
+        scene.add(terrain);
+
+	}
+
+	
+	function loadTextures(){
+		textureCounter += 1;
+		
+		if(textureCounter == 4){
+			terrain.visible = true;
+		}
+	}
+
+	//--------------------------
+	//	Event handlers
+	//--------------------------
+	
+	/**
+	*	Updates the camera aspects when window is resized.
+	*/
+	function onWindowResize(){
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		
+		controls.handleResize();
 	}
 	
-	function initShaders(){}
+	function onDocumentMouseMove(){
 	
-	return {
-		start : function(){
-			var canvas = document.getElementById("glcanvas");
-			
-			gl = initGL(canvas);
-			initShaders();
-			initBuffers();
-			
-			gl.clearColor(0.0, 0.0, 0.0, 1.0);
-			gl.enable(gl.DEPTH_TEST);
-			gl.depthFunc(gl.LEQUAL);
-			
-			
-			render();
+	}
+
+	//--------------------------
+	//	Render and update logic
+	//--------------------------
+	
+	function render(){
+		requestAnimationFrame(render);
+		//testCube.rotation.x += 0.1;
+		//testCube.rotation.y += 0.1;
+		var delta = clock.getDelta();
+
+		//controls.update();
+		
+
+		if(terrain.visible){
+			//console.log(camera.position);
+			controls.update(delta);
+
+
+			var time = Date.now() * 0.001;
+			var fLow = 0.1, fHigh = 0.8;
+
+			lightVal = THREE.Math.clamp(lightVal + 0.5 * delta * lightDirection, fLow, fHigh);
+			var valNorm = (lightVal - fLow) / (fHigh - fLow);
+
+			directionalLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.1, 1.15);
+			spotLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.9, 1.15);
+
+			uniformsTerrain['uNormalScale'].value = THREE.Math.mapLinear(valNorm, 0, 1, 0.6, 3.5);
+
+
+			renderer.render(scene,camera);
 		}
-	};
-})();
-
-	//////////////////////////////////////////////////////////////////////
-	//
-	//	MAP DATA
-	//
-	//////////////////////////////////////////////////////////////////////
-
-var Map = (function() {})();
+	}
 	
+
