@@ -23,6 +23,8 @@
 	//Clickable objects
 	var projector, raycaster;
 
+	//GUI
+	var gui, cameraController = {};
 
 	var terrain;
 	var materialLibrary = {};
@@ -33,9 +35,11 @@
 
 
 	//Proj4 variables
-	var utm33 = '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs ';
+	var WGS84_TO_UTM33 = '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs ';
+	var UTMXX_CENTER_X = 600000;
+	var UTMXX_CENTER_Y = 7600000;
 	var COORD_CENTER = {x:600000,y:7600000};
-	var COORD_NARVIK = proj4(utm33, [17.435281,68.435675]); //5.999.869, 7.600.760
+	var COORD_NARVIK = proj4(WGS84_TO_UTM33, [17.435281,68.435675]); //5.999.869, 7.600.760
 	
 	init();
 	render();
@@ -49,12 +53,12 @@
 		
 		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
 		//camera.z = 5;
-		/*camera.position.x = 1000;
-		camera.position.y = 200;
-		camera.position.z = 1300;*/
-		camera.position.x = COORD_NARVIK[0];//COORD_CENTER.x;
+		camera.position.x = 410;//1000;
+		camera.position.y = 400;
+		camera.position.z = 410;//1300;
+		/*camera.position.x = COORD_NARVIK[0];//COORD_CENTER.x;
 		camera.position.y = 600;
-		camera.position.z = COORD_NARVIK[1];//COORD_CENTER.y;
+		camera.position.z = COORD_NARVIK[1];//COORD_CENTER.y;*/
 		camera.lookAt(scene.position);
 		
 		renderer = new THREE.WebGLRenderer();
@@ -69,15 +73,15 @@
 		//addTerrainUsingHeightMap('res/maps/narvik.png');
 
 		//Sprites
-      	var narvikTag = makeTextSprite("Narvik", {fontsize: 128, borderColor: {r:255, g:255, b:255, a:1.0}, 
+      	var narvikTag = makeTextSprite('Narvik', {fontsize: 128, borderColor: {r:255, g:255, b:255, a:1.0}, 
         											backgroundColor: {r:255, g:255, b:255, a:1.0} } );
         narvikTag.position.set(COORD_NARVIK[0], 2000, COORD_NARVIK[1]);
         scene.add(narvikTag);
 
-        console.log(COORD_NARVIK);
+        /*console.log(COORD_NARVIK);
         console.log(COORD_CENTER);
         console.log(narvikTag.position);	//599810, 7593417
-        console.log(terrain.position);
+        console.log(terrain.position);*/
 
 
 	}
@@ -89,26 +93,31 @@
 		// Spotlight
         spotLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2, 1 );
         scene.add(spotLight);
-		spotLight.position.x = 605000;
+        spotLight.position.x = 2000;
+		spotLight.position.y = 6000;
+		spotLight.position.z = -2000;
+		spotLight.intensity = 17.2;
+		/*spotLight.position.x = 605000;
         spotLight.position.y = 80000;
         spotLight.position.z = 7605000;
-        spotLight.intensity = 1.72;
+        spotLight.intensity = 1.72;*/
         spotLight.target.position.set( 0, 0, 0 );
 
         //Shadows cast by spotlight
-        spotLight.castShadow = true;
+        /*spotLight.castShadow = true;
         spotLight.shadowCameraNear = 1200;
         spotLight.shadowCameraFar = 2500;
         spotLight.shadowCameraFov = 50;
     	spotLight.shadowBias = 0.0001;
 		spotLight.shadowDarkness = 0.5;
 		spotLight.shadowMapWidth = SHADOW_MAP_WIDTH;
-		spotLight.shadowMapHeight = SHADOW_MAP_HEIGHT;
+		spotLight.shadowMapHeight = SHADOW_MAP_HEIGHT;*/
 		scene.add(spotLight);
 		
 		//Directional light
         directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
-        directionalLight.position.set(800000, 40000, 7605000);
+        directionalLight.position.set(1000, 4000, 0); 
+        //directionalLight.position.set(800000, 40000, 7605000);
         scene.add(directionalLight);
 
 		scene.add( new THREE.AmbientLight( 0x111111 ) );
@@ -120,16 +129,9 @@
 	 */
 	function initControllers(){
 		window.addEventListener('resize', onWindowResize, false);
-		controls = new THREE.FirstPersonControls(camera);
-		controls.movementSpeed = 5000;
+		controls = new THREE.FirstPersonControls(camera, renderer.domElement);
+		controls.movementSpeed = 500;
 		controls.lookSpeed = 0.20;
-		/*controls.rotateSpeed = 1.0;
-		controls.zoomSpeed = 1.2;
-		controls.panSpeed = 0.8;
-		controls.noZoom = false;
-		controls.noPan = false;
-		controls.staticMoving = false;
-		controls.dynamicDampingFactor = 0.15;*/
 
 		window.addEventListener( 'keydown', onKeyDown , false );
 		window.addEventListener( 'keyup', onKeyUp , false );
@@ -137,14 +139,26 @@
 		raycaster = new THREE.Raycaster();
 		projector = new THREE.Projector();
 
-		var controlButton = document.createElement('div');
-		controlButton.id = 'controlButton';
-		controlButton.textContent = 'Input coordinates';
-		controlButton.addEventListener('click', function(event){
+		cameraController = {
+			x: 410,
+			y: 410,
+			height: 400
+		}
 
-		}, false);
-		controlButton.style.display = 'none';
-		document.body.appendChild(controlButton);
+		gui = new dat.GUI();
+
+		var guiFolder1 = gui.addFolder('Camera positions');
+
+		guiFolder1.add(camera.position, 'x', -4100, 4100).listen();
+		guiFolder1.add(camera.position, 'y', 0, 1000).listen();
+		guiFolder1.add(camera.position, 'z', -4100, 4100).listen();
+
+		var guiFolder2 = gui.addFolder('Camera target');
+
+		/*guiFolder2.add(camera.targetPosition, 'x', -4100, 4100).listen();
+		guiFolder2.add(camera.targetPosition, 'y', 0, 1000).listen();
+		guiFolder2.add(camera.targetPosition, 'z', -4100, 4100).listen();*/
+
 
 	}
 	
@@ -157,16 +171,16 @@
 		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
  
         // Loading textures
-        /*var detailTexture = THREE.ImageUtils.loadTexture("res/textures/grass.JPG", null, loadTextures);
+        /*var detailTexture = THREE.ImageUtils.loadTexture('res/textures/grass.JPG', null, loadTextures);
 		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;*/
 		
-		var diffuseTexture = THREE.ImageUtils.loadTexture("res/textures/sand.jpg", null, loadTextures);
+		var diffuseTexture = THREE.ImageUtils.loadTexture('res/textures/sand.jpg', null, loadTextures);
 		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
 
-		var diffuseTexture2 = THREE.ImageUtils.loadTexture("res/textures/bg.jpg", null, loadTextures);
+		var diffuseTexture2 = THREE.ImageUtils.loadTexture('res/textures/bg.jpg', null, loadTextures);
 		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
 
-		var detailTexture = THREE.ImageUtils.loadTexture("res/textures/bg.jpg", null, loadTextures);
+		var detailTexture = THREE.ImageUtils.loadTexture('res/textures/bg.jpg', null, loadTextures);
 		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
  
 
@@ -188,35 +202,35 @@
         uniformsTerrain = THREE.UniformsUtils.clone(terrainShader.uniforms);
 
 
-        uniformsTerrain[ "tNormal" ].value = diffuseTexture2;
-        uniformsTerrain[ "uNormalScale" ].value = 3.0;
+        uniformsTerrain[ 'tNormal' ].value = diffuseTexture2;
+        uniformsTerrain[ 'uNormalScale' ].value = 3.0;
  
         // the displacement determines the height of a vector, mapped to
         // the heightmap
-        uniformsTerrain[ "tDisplacement" ].value = heightMap;
-        uniformsTerrain[ "uDisplacementScale" ].value = 195.18;
-        //uniformsTerrain[ "uDisplacementBias" ].value = 1.0;
+        uniformsTerrain[ 'tDisplacement' ].value = heightMap;
+        uniformsTerrain[ 'uDisplacementScale' ].value = 195.18;
+        //uniformsTerrain[ 'uDisplacementBias' ].value = 1.0;
  
-		//uniformsTerrain[ "enableDiffuse1" ].value = true;
-		//uniformsTerrain[ "enableDiffuse2" ].value = true;
-		//uniformsTerrain[ "enableSpecular" ].value = true;
+		//uniformsTerrain[ 'enableDiffuse1' ].value = true;
+		//uniformsTerrain[ 'enableDiffuse2' ].value = true;
+		//uniformsTerrain[ 'enableSpecular' ].value = true;
 		
-        uniformsTerrain[ "tDiffuse1" ].value = diffuseTexture2;
-        uniformsTerrain[ "tDiffuse2" ].value = diffuseTexture2;
-        uniformsTerrain[ "tDetail" ].value = detailTexture;
+        uniformsTerrain[ 'tDiffuse1' ].value = diffuseTexture2;
+        uniformsTerrain[ 'tDiffuse2' ].value = diffuseTexture2;
+        uniformsTerrain[ 'tDetail' ].value = detailTexture;
  
         // Light settings
-        uniformsTerrain[ "diffuse" ].value.setHex(0xcccccc );
-        uniformsTerrain[ "specular" ].value.setHex(0xff0000 );
-        uniformsTerrain[ "ambient" ].value.setHex(0x0000cc );
+        uniformsTerrain[ 'diffuse' ].value.setHex(0xcccccc );
+        uniformsTerrain[ 'specular' ].value.setHex(0xff0000 );
+        uniformsTerrain[ 'ambient' ].value.setHex(0x0000cc );
  
         // how shiny is the terrain
-        uniformsTerrain[ "shininess" ].value = 3;
+        uniformsTerrain[ 'shininess' ].value = 3;
  
         // handles light reflection
-        uniformsTerrain[ "uRepeatOverlay" ].value.set(6, 6);
+        uniformsTerrain[ 'uRepeatOverlay' ].value.set(6, 6);
 
-        uniformsTerrain[ "enableColorHeight"].value = true;
+        uniformsTerrain[ 'enableColorHeight'].value = true;
 
 		var parameters = [
 				/*['normal', normalShader.fragmentShader, normalShader.vertexShader, uniformsNormal, false],*/
@@ -238,9 +252,11 @@
         geometryTerrain.computeTangents();
 
         terrain = new THREE.Mesh(geometryTerrain, materialLibrary['terrain']);
-        terrain.position.set(COORD_CENTER.x, -3, COORD_CENTER.y);
+        terrain.position.set(0, -3, 0);
+        //terrain.position.set(COORD_CENTER.x, -3, COORD_CENTER.y);
         terrain.rotation.x = -Math.PI / 2;
-        terrain.scale.set(100,100, 10);
+        //terrain.scale.set(100,100, 10);
+        terrain.scale.set(10, 10, 1);
         terrain.receiveShadow = true;
         terrain.castShadow = true;
 		terrain.visible = false;
@@ -278,44 +294,44 @@
 	{
 		if ( parameters === undefined ) parameters = {};
 		
-		var fontface = parameters.hasOwnProperty("fontface") ? 
-			parameters["fontface"] : "Arial";
+		var fontface = parameters.hasOwnProperty('fontface') ? 
+			parameters['fontface'] : 'Arial';
 		
-		var fontsize = parameters.hasOwnProperty("fontsize") ? 
-			parameters["fontsize"] : 18;
+		var fontsize = parameters.hasOwnProperty('fontsize') ? 
+			parameters['fontsize'] : 18;
 		
-		var borderThickness = parameters.hasOwnProperty("borderThickness") ? 
-			parameters["borderThickness"] : 4;
+		var borderThickness = parameters.hasOwnProperty('borderThickness') ? 
+			parameters['borderThickness'] : 4;
 		
-		var borderColor = parameters.hasOwnProperty("borderColor") ?
-			parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+		var borderColor = parameters.hasOwnProperty('borderColor') ?
+			parameters['borderColor'] : { r:0, g:0, b:0, a:1.0 };
 		
-		var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
-			parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+		var backgroundColor = parameters.hasOwnProperty('backgroundColor') ?
+			parameters['backgroundColor'] : { r:255, g:255, b:255, a:1.0 };
 
 		//var spriteAlignment = THREE.SpriteAlignment.topLeft;
 			
 		var canvas = document.createElement('canvas');
 		var context = canvas.getContext('2d');
-		context.font = "Bold " + fontsize + "px " + fontface;
+		context.font = 'Bold ' + fontsize + 'px ' + fontface;
 	    
 		// get size data (height depends only on font size)
 		var metrics = context.measureText( message );
 		var textWidth = metrics.width;
 		
 		// background color
-		context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
-									  + backgroundColor.b + "," + backgroundColor.a + ")";
+		context.fillStyle   = 'rgba(' + backgroundColor.r + ',' + backgroundColor.g + ','
+									  + backgroundColor.b + ',' + backgroundColor.a + ')';
 		// border color
-		context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
-									  + borderColor.b + "," + borderColor.a + ")";
+		context.strokeStyle = 'rgba(' + borderColor.r + ',' + borderColor.g + ','
+									  + borderColor.b + ',' + borderColor.a + ')';
 
 		context.lineWidth = borderThickness;
 		roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
 		// 1.4 is extra height factor for text below baseline: g,j,p,q.
 		
 		// text color
-		context.fillStyle = "rgba(0, 0, 0, 1.0)";
+		context.fillStyle = 'rgba(0, 0, 0, 1.0)';
 
 		context.fillText( message, borderThickness, fontsize + borderThickness);
 		
@@ -372,12 +388,12 @@
 		//event.preventDefault();
 
 		switch ( event.keyCode ) {
-			case 49: // 1 - go to Narvik
+			/*case 49: // 1 - go to Narvik
 				camera.position.x = COORD_NARVIK[0] + 500;//COORD_CENTER.x;
 				camera.position.y = 600;
 				camera.position.z = COORD_NARVIK[1] + 500;//COORD_CENTER.y;
 				camera.lookAt(COORD_NARVIK[0], 0, COORD_NARVIK[1]);
-				break;
+				break;*/
 		}
 
 	};
@@ -438,5 +454,10 @@
 			renderer.render(scene,camera);
 		}
 	}
+
+	function guiChanged(){
+
+	}
+
 	
 
