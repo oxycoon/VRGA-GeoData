@@ -52,9 +52,9 @@
 		/*camera.position.x = 1000;
 		camera.position.y = 200;
 		camera.position.z = 1300;*/
-		camera.position.x = COORD_CENTER.x;
+		camera.position.x = COORD_NARVIK[0];//COORD_CENTER.x;
 		camera.position.y = 600;
-		camera.position.z = COORD_CENTER.y;
+		camera.position.z = COORD_NARVIK[1];//COORD_CENTER.y;
 		camera.lookAt(scene.position);
 		
 		renderer = new THREE.WebGLRenderer();
@@ -65,17 +65,19 @@
 		initLights();
 		
 
-		//addTerrainUsingHeightMap('res/maps/narvik_scale.png');
-		addTerrainUsingHeightMap('res/maps/narvik.png');
+		addTerrainUsingHeightMap('res/maps/narvik_scale.png');
+		//addTerrainUsingHeightMap('res/maps/narvik.png');
 
 		//Sprites
-      	var narvikTag = makeTextSprite("Narvik", {fontsize: 32, borderColor: {r:255, g:255, b:255, a:1.0}, 
+      	var narvikTag = makeTextSprite("Narvik", {fontsize: 128, borderColor: {r:255, g:255, b:255, a:1.0}, 
         											backgroundColor: {r:255, g:255, b:255, a:1.0} } );
-        narvikTag.position.set(COORD_NARVIK.x,20,COORD_NARVIK.y);
+        narvikTag.position.set(COORD_NARVIK[0], 2000, COORD_NARVIK[1]);
         scene.add(narvikTag);
 
         console.log(COORD_NARVIK);
         console.log(COORD_CENTER);
+        console.log(narvikTag.position);	//599810, 7593417
+        console.log(terrain.position);
 
 
 	}
@@ -87,10 +89,10 @@
 		// Spotlight
         spotLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2, 1 );
         scene.add(spotLight);
-		spotLight.position.x = 2000;
-        spotLight.position.y = 6000;
-        spotLight.position.z = -2000;
-        spotLight.intensity = 17.2;
+		spotLight.position.x = 605000;
+        spotLight.position.y = 80000;
+        spotLight.position.z = 7605000;
+        spotLight.intensity = 1.72;
         spotLight.target.position.set( 0, 0, 0 );
 
         //Shadows cast by spotlight
@@ -106,7 +108,7 @@
 		
 		//Directional light
         directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
-        directionalLight.position.set(1000, 4000, 0);
+        directionalLight.position.set(800000, 40000, 7605000);
         scene.add(directionalLight);
 
 		scene.add( new THREE.AmbientLight( 0x111111 ) );
@@ -119,7 +121,7 @@
 	function initControllers(){
 		window.addEventListener('resize', onWindowResize, false);
 		controls = new THREE.FirstPersonControls(camera);
-		controls.movementSpeed = 500;
+		controls.movementSpeed = 5000;
 		controls.lookSpeed = 0.20;
 		/*controls.rotateSpeed = 1.0;
 		controls.zoomSpeed = 1.2;
@@ -128,6 +130,9 @@
 		controls.noPan = false;
 		controls.staticMoving = false;
 		controls.dynamicDampingFactor = 0.15;*/
+
+		window.addEventListener( 'keydown', onKeyDown , false );
+		window.addEventListener( 'keyup', onKeyUp , false );
 
 		raycaster = new THREE.Raycaster();
 		projector = new THREE.Projector();
@@ -235,7 +240,7 @@
         terrain = new THREE.Mesh(geometryTerrain, materialLibrary['terrain']);
         terrain.position.set(COORD_CENTER.x, -3, COORD_CENTER.y);
         terrain.rotation.x = -Math.PI / 2;
-        terrain.scale.set(10,10, 1);
+        terrain.scale.set(100,100, 10);
         terrain.receiveShadow = true;
         terrain.castShadow = true;
 		terrain.visible = false;
@@ -361,7 +366,45 @@
 		
 		controls.handleResize();
 	}
-	
+
+	function onKeyDown ( event ) {
+
+		//event.preventDefault();
+
+		switch ( event.keyCode ) {
+			case 49: // 1 - go to Narvik
+				camera.position.x = COORD_NARVIK[0] + 500;//COORD_CENTER.x;
+				camera.position.y = 600;
+				camera.position.z = COORD_NARVIK[1] + 500;//COORD_CENTER.y;
+				camera.lookAt(COORD_NARVIK[0], 0, COORD_NARVIK[1]);
+				break;
+		}
+
+	};
+
+	function onKeyUp( event ) {
+
+		switch( event.keyCode ) {
+
+			//case 38: /*up*/
+			//case 87: /*W*/ this.moveForward = false; break;
+
+			//case 37: /*left*/
+			//case 65: /*A*/ this.moveLeft = false; break;
+
+			//case 40: /*down*/
+			//case 83: /*S*/ this.moveBackward = false; break;
+
+			//case 39: /*right*/
+			//case 68: /*D*/ this.moveRight = false; break;
+
+			//case 82: /*R*/ this.moveUp = false; break;
+			//case 70: /*F*/ this.moveDown = false; break;
+
+		}
+
+	};
+
 	//--------------------------
 	//	Render and update logic
 	//--------------------------

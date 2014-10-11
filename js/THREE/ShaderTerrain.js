@@ -146,9 +146,11 @@ THREE.ShaderTerrain = {
 					"else if(colorHeight > 0.55)",								//   |
 						"gl_FragColor = vec4(0.7, 0.7, 0.7, opacity);",			//   |
 					"else if(colorHeight > 0.20)",								//   |
-						"gl_FragColor = vec4(0.6, 0.6, 0.2, opacity);",			//   |- Added by Daniel
-					"else if(colorHeight > 0.01)",								//   |
+						"gl_FragColor = vec4(0.6, 0.6, 0.2, opacity);",			//   |
+					"else if(colorHeight > 0.05)",								//   |- Added by Daniel
 						"gl_FragColor = vec4(0.2, 1.0, 0.2, opacity);",			//   |
+					"else if(colorHeight > 0.01)",								//   |
+						"gl_FragColor = vec4(0.8, 1.0, 0.4, opacity);",			//   |						
 					"else ",													//  /
 						"gl_FragColor = vec4(0.2, 0.8, 1.0, opacity);",			// /
 				"}",															///
