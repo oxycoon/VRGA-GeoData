@@ -75,7 +75,6 @@ THREE.FirstPersonControls = function ( object, domElement ) {
 	};
 
 	this.onMouseDown = function ( event ) {
-
 		if ( this.domElement !== document ) {
 
 			this.domElement.focus();
