@@ -1,9 +1,9 @@
 
 	//Checks if WebGl is supported.
-	if ( ! Detector.webgl ) {
+	if (! Detector.webgl) {
 
 		Detector.addGetWebGLMessage();
-		document.getElementById( 'container' ).innerHTML ='';
+		document.getElementById('container').innerHTML ='';
 
 	}
 
@@ -22,6 +22,9 @@
 
 	//Clickable objects
 	var projector, raycaster;
+	var mouse = new THREE.Vector2();
+	var intersected, selection;
+	var labelsList = [];
 
 	//GUI
 	var gui;
@@ -92,25 +95,28 @@
 
 		//Sprites
       	tagNarvik = makeTextSprite('Narvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
         tagNarvik.position.set((COORD_CENTER.x - COORD_NARVIK[0])/10, 200, (COORD_CENTER.y - COORD_NARVIK[1])/10);
         scene.add(tagNarvik);
+        labelsList.push(tagNarvik);
 
       	tagBjerkvik = makeTextSprite('Bjerkvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
         tagBjerkvik.position.set((COORD_CENTER.x - COORD_BJERKVIK[0])/10, 200, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
         scene.add(tagBjerkvik);
+        labelsList.push(tagBjerkvik);
 
       	tagAnkenes = makeTextSprite('Ankenes', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
         tagAnkenes.position.set((COORD_CENTER.x - COORD_ANKENES[0])/10, 200, (COORD_CENTER.y - COORD_ANKENES[1])/10);
         scene.add(tagAnkenes);
+        labelsList.push(tagAnkenes);
 
       	tagSkjomtind = makeTextSprite('Skjomtind', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
         tagSkjomtind.position.set((COORD_CENTER.x - COORD_SKJOMTIND.x)/10, 200, (COORD_CENTER.y - COORD_SKJOMTIND.y)/10);
         scene.add(tagSkjomtind);
-
+        labelsList.push(tagSkjomtind);
         /*console.log(tagSkjomtind.position);
         console.log(tagNarvik.position);
         console.log(tagAnkenes.position);
@@ -123,13 +129,13 @@
 	 */
 	function initLights(){
 		// Spotlight
-        spotLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2, 1 );
+        spotLight = new THREE.SpotLight(0xffffff, 1, 0, Math.PI / 2, 1);
         scene.add(spotLight);
         spotLight.position.x = 2000;
 		spotLight.position.y = 6000;
 		spotLight.position.z = -2000;
 		spotLight.intensity = 17.2;
-        spotLight.target.position.set( 0, 0, 0 );
+        spotLight.target.position.set(0, 0, 0);
 
         //Shadows cast by spotlight
         /*spotLight.castShadow = true;
@@ -148,7 +154,7 @@
         //directionalLight.position.set(800000, 40000, 7605000);
         scene.add(directionalLight);
 
-		scene.add( new THREE.AmbientLight( 0x111111 ) );
+		scene.add(new THREE.AmbientLight(0x111111));
 	}
 	
 	/**
@@ -161,13 +167,12 @@
 		controls.movementSpeed = 500;
 		controls.lookSpeed = 0.20;
 
-		window.addEventListener( 'keydown', onKeyDown , false );
-		window.addEventListener( 'keyup', onKeyUp , false );
+		window.addEventListener('keydown', onKeyDown , false);
+		window.addEventListener('keyup', onKeyUp , false);
 
-		raycaster = new THREE.Raycaster();
-		projector = new THREE.Projector();
-
-
+		renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
+		renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
+		renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
 	}
 
 	/**
@@ -267,9 +272,9 @@
         uniformsTerrain[ 'tDetail' ].value = detailTexture;
  
         // Light settings
-        uniformsTerrain[ 'diffuse' ].value.setHex(0xcccccc );
-        uniformsTerrain[ 'specular' ].value.setHex(0xff0000 );
-        uniformsTerrain[ 'ambient' ].value.setHex(0x0000cc );
+        uniformsTerrain[ 'diffuse' ].value.setHex(0xcccccc);
+        uniformsTerrain[ 'specular' ].value.setHex(0xff0000);
+        uniformsTerrain[ 'ambient' ].value.setHex(0x0000cc);
  
         // how shiny is the terrain
         uniformsTerrain[ 'shininess' ].value = 3;
@@ -334,9 +339,9 @@
 	 *		-	backgroundColor		{ r:0-255, g:0-255, b:0-255, a: 0.0-1.0}
 	 *	@return {object} sprite A THREE.Sprite with the given message and parameters.
 	 */
-	function makeTextSprite( message, parameters )
+	function makeTextSprite(message, parameters)
 	{
-		if ( parameters === undefined ) parameters = {};
+		if (parameters === undefined) parameters = {};
 		
 		var fontface = parameters.hasOwnProperty('fontface') ? 
 			parameters['fontface'] : 'Arial';
@@ -360,7 +365,7 @@
 		context.font = 'Bold ' + fontsize + 'px ' + fontface;
 	    
 		// get size data (height depends only on font size)
-		var metrics = context.measureText( message );
+		var metrics = context.measureText(message);
 		var textWidth = metrics.width;
 		
 		// background color
@@ -377,15 +382,15 @@
 		// text color
 		context.fillStyle = 'rgba(0, 0, 0, 1.0)';
 
-		context.fillText( message, borderThickness, fontsize + borderThickness);
+		context.fillText(message, borderThickness, fontsize + borderThickness);
 		
 		// canvas contents will be used for a texture
 		var texture = new THREE.Texture(canvas) 
 		texture.needsUpdate = true;
 
-		var spriteMaterial = new THREE.SpriteMaterial( 
-			{ map: texture, useScreenCoordinates: false /*alignment: spriteAlignment */} );
-		var sprite = new THREE.Sprite( spriteMaterial );
+		var spriteMaterial = new THREE.SpriteMaterial(
+			{ map: texture, useScreenCoordinates: false /*alignment: spriteAlignment */});
+		var sprite = new THREE.Sprite(spriteMaterial);
 		sprite.scale.set(100,50,1.0);
 		return sprite;	
 	}
@@ -416,8 +421,8 @@
 	//--------------------------
 	
 	/**
-	*	Updates the camera aspects when window is resized.
-	*/
+	 *	Updates the camera aspects when window is resized.
+	 */
 	function onWindowResize(){
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.updateProjectionMatrix();
@@ -427,11 +432,92 @@
 		controls.handleResize();
 	}
 
-	function onKeyDown ( event ) {
+	function onDocumentMouseMove(event){
+		event.preventDefault();
+
+		mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+		mouse.y = (event.clientY / window.innerHeight) * 2 + 1;
+
+		if(selection){
+			return;
+		}
+
+		//Find intersections
+		var vector = new THREE.Vector3(mouse.x, mouse.y, camera.near);
+
+		projector = new THREE.Projector();
+		projector.unprojectVector(vector, camera);
+
+		raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+		var intersects = raycaster.intersectObjects(labelsList);
+
+		if(intersects.length > 0){
+			if(intersected != intersects[0].object)
+			{
+				intersected = intersects[0].object;
+				console.log('Mouseover object detected: ' + intersects[0].object.position.x + ',' + intersects[0].object.position.y + ',' + intersects[0].object.position.z);
+			}
+			else{
+				//if(intersected) intersected.material.emissive.setHex(intersected.currentHex);
+				//console.log("Intersection removed!");
+				intersected = null;
+			}
+		}
+	}
+
+	function onDocumentMouseDown(event){
+		event.preventDefault();
+		event.stopPropagation();
+
+
+		//console.log("CLICK EVENT!");
+
+		switch ( event.button ) {
+
+			case 0:
+				var vector = new THREE.Vector3(mouse.x, mouse.y, camera.near);
+
+				projector = new THREE.Projector();
+				projector.unprojectVector(vector, camera);
+
+				raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+				var intersects = raycaster.intersectObjects(labelsList);
+
+				if(intersects.length > 0){
+					console.log("Intersection selected!");
+					controls.enabled = false;
+
+					selection = intersects[0].object;
+
+					camera.position.x = selection.position.x - 200;
+					camera.position.y = 200;
+					camera.position.z = selection.position.z - 200;
+					camera.lookAt(selection.position.x , 0, selection.position.z);
+				}
+
+				break;
+
+		}
+
+		//this.mouseDragOn = true;
+	}
+
+	function onDocumentMouseUp(event){
+		event.preventDefault();
+		event.stopPropagation();
+
+		controls.enabled = true;
+
+		if(intersected){
+			intersected = null;
+		}
+	}
+
+	function onKeyDown (event) {
 
 		//event.preventDefault();
 
-		switch ( event.keyCode ) {
+		switch (event.keyCode) {
 			/*case 49: // 1 - go to Narvik
 				camera.position.x = COORD_NARVIK[0] + 500;//COORD_CENTER.x;
 				camera.position.y = 600;
@@ -442,9 +528,9 @@
 
 	}
 
-	function onKeyUp( event ) {
+	function onKeyUp(event) {
 
-		switch( event.keyCode ) {
+		switch(event.keyCode) {
 
 			//case 38: /*up*/
 			//case 87: /*W*/ this.moveForward = false; break;
@@ -532,7 +618,7 @@
 			//console.log(camera.position);
 
 
-			var time = Date.now() * 0.001;
+			/*var time = Date.now() * 0.001;
 			var fLow = 0.1, fHigh = 0.8;
 
 			lightVal = THREE.Math.clamp(lightVal + 0.5 * delta * lightDirection, fLow, fHigh);
@@ -541,7 +627,9 @@
 			directionalLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.1, 1.15);
 			spotLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.9, 1.15);
 
-			uniformsTerrain['uNormalScale'].value = THREE.Math.mapLinear(valNorm, 0, 1, 0.6, 3.5);
+			uniformsTerrain['uNormalScale'].value = THREE.Math.mapLinear(valNorm, 0, 1, 0.6, 3.5);*/
+
+
 
 
 			renderer.render(scene,camera);
