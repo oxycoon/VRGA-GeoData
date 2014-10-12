@@ -28,15 +28,17 @@
 
 	//GUI
 	var gui;
+	var locations =  {city: 'Select city', mountain: 'Select mountain'};
+	var showLabels = {cities: true, mountains: true};
 
+	//Terrain and materials
 	var terrain;
 	var materialLibrary = {};
-	
-	var clock = new THREE.Clock();
-	
 	var textureCounter = 0;
 
-
+	//Clock
+	var clock = new THREE.Clock();
+	
 	//Proj4 constants
 	var WGS84_TO_UTM33 = '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs ';
 	var UTMXX_CENTER_X = 600000;
@@ -51,9 +53,6 @@
 	//Mountains
 	var COORD_SKJOMTIND = {x:596965,y:7583005};
 
-	var locations =  {city: 'Select city', mountain: 'Select mountain'};
-	var showLabels = {cities: true, mountains: true};
-
 	//Sprite tags
 	var tagNarvik;
 	var tagBjerkvik;
@@ -67,18 +66,18 @@
 	//--------------------------
 	//	Initialization logic
 	//--------------------------
-	
+
+	/**
+	 *	Primary initialization function which sets up the scene, camera, renderer
+	 *	and calls the other init functions.
+	 */
 	function init(){
 		scene = new THREE.Scene();
 		
 		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
-		//camera.z = 5;
-		camera.position.x = 0;//1000;
+		camera.position.x = 0;
 		camera.position.y = 400;
-		camera.position.z = 0;//1300;
-		/*camera.position.x = COORD_NARVIK[0];//COORD_CENTER.x;
-		camera.position.y = 600;
-		camera.position.z = COORD_NARVIK[1];//COORD_CENTER.y;*/
+		camera.position.z = 0;
 		camera.lookAt(scene.position);
 		
 		renderer = new THREE.WebGLRenderer();
@@ -88,39 +87,10 @@
 		initControllers();
 		initGUI();
 		initLights();
-		
-
 		addTerrainUsingHeightMap('res/maps/narvik_scale.png');
-		//addTerrainUsingHeightMap('res/maps/narvik.png');
 
-		//Sprites
-      	tagNarvik = makeTextSprite('Narvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagNarvik.position.set((COORD_CENTER.x - COORD_NARVIK[0])/10, 200, (COORD_CENTER.y - COORD_NARVIK[1])/10);
-        scene.add(tagNarvik);
-        labelsList.push(tagNarvik);
 
-      	tagBjerkvik = makeTextSprite('Bjerkvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagBjerkvik.position.set((COORD_CENTER.x - COORD_BJERKVIK[0])/10, 200, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
-        scene.add(tagBjerkvik);
-        labelsList.push(tagBjerkvik);
-
-      	tagAnkenes = makeTextSprite('Ankenes', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagAnkenes.position.set((COORD_CENTER.x - COORD_ANKENES[0])/10, 200, (COORD_CENTER.y - COORD_ANKENES[1])/10);
-        scene.add(tagAnkenes);
-        labelsList.push(tagAnkenes);
-
-      	tagSkjomtind = makeTextSprite('Skjomtind', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
-        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagSkjomtind.position.set((COORD_CENTER.x - COORD_SKJOMTIND.x)/10, 200, (COORD_CENTER.y - COORD_SKJOMTIND.y)/10);
-        scene.add(tagSkjomtind);
-        labelsList.push(tagSkjomtind);
-        /*console.log(tagSkjomtind.position);
-        console.log(tagNarvik.position);
-        console.log(tagAnkenes.position);
-        console.log(tagBjerkvik.position);*/
+		initSprites();
 
 	}
 
@@ -136,22 +106,11 @@
 		spotLight.position.z = -2000;
 		spotLight.intensity = 17.2;
         spotLight.target.position.set(0, 0, 0);
-
-        //Shadows cast by spotlight
-        /*spotLight.castShadow = true;
-        spotLight.shadowCameraNear = 1200;
-        spotLight.shadowCameraFar = 2500;
-        spotLight.shadowCameraFov = 50;
-    	spotLight.shadowBias = 0.0001;
-		spotLight.shadowDarkness = 0.5;
-		spotLight.shadowMapWidth = SHADOW_MAP_WIDTH;
-		spotLight.shadowMapHeight = SHADOW_MAP_HEIGHT;*/
 		scene.add(spotLight);
 		
 		//Directional light
         directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
         directionalLight.position.set(1000, 4000, 0); 
-        //directionalLight.position.set(800000, 40000, 7605000);
         scene.add(directionalLight);
 
 		scene.add(new THREE.AmbientLight(0x111111));
@@ -166,9 +125,6 @@
 		controls = new THREE.FirstPersonControls(camera, renderer.domElement);
 		controls.movementSpeed = 500;
 		controls.lookSpeed = 0.20;
-
-		window.addEventListener('keydown', onKeyDown , false);
-		window.addEventListener('keyup', onKeyUp , false);
 
 		renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
 		renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
@@ -207,6 +163,35 @@
 			tagSkjomtind.visible = value;
 		});
 	}	
+
+	/**
+	 *	Initializes the sprites in the scene.
+	 */
+	function initSprites(){
+      	tagNarvik = makeTextSprite('Narvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
+        tagNarvik.position.set((COORD_CENTER.x - COORD_NARVIK[0])/10, 200, (COORD_CENTER.y - COORD_NARVIK[1])/10);
+        scene.add(tagNarvik);
+        labelsList.push(tagNarvik);
+
+      	tagBjerkvik = makeTextSprite('Bjerkvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
+        tagBjerkvik.position.set((COORD_CENTER.x - COORD_BJERKVIK[0])/10, 200, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
+        scene.add(tagBjerkvik);
+        labelsList.push(tagBjerkvik);
+
+      	tagAnkenes = makeTextSprite('Ankenes', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
+        tagAnkenes.position.set((COORD_CENTER.x - COORD_ANKENES[0])/10, 200, (COORD_CENTER.y - COORD_ANKENES[1])/10);
+        scene.add(tagAnkenes);
+        labelsList.push(tagAnkenes);
+
+      	tagSkjomtind = makeTextSprite('Skjomtind', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} });
+        tagSkjomtind.position.set((COORD_CENTER.x - COORD_SKJOMTIND.x)/10, 200, (COORD_CENTER.y - COORD_SKJOMTIND.y)/10);
+        scene.add(tagSkjomtind);
+        labelsList.push(tagSkjomtind);
+	}
 	
 	/**
 	 *	Creates a 8192x8192 terrain based on a given heigthmap.
@@ -220,31 +205,14 @@
 		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
  
         // Loading textures
-        /*var detailTexture = THREE.ImageUtils.loadTexture('res/textures/grass.JPG', null, loadTextures);
-		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;*/
+        var detailTexture = THREE.ImageUtils.loadTexture('res/textures/grass.JPG', null, loadTextures);
+		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
 		
 		var diffuseTexture = THREE.ImageUtils.loadTexture('res/textures/sand.jpg', null, loadTextures);
 		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
 
 		var diffuseTexture2 = THREE.ImageUtils.loadTexture('res/textures/bg.jpg', null, loadTextures);
 		diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
-
-		var detailTexture = THREE.ImageUtils.loadTexture('res/textures/bg.jpg', null, loadTextures);
-		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
- 
-
-
-		// Normal Shader
-		/*var normalShader = THREE.NormalMapShader;
-		uniformsNormal = THREE.UniformsUtils.clone(normalShader.uniforms);
-
-		var rx = 256, ry = 256;
-		var pars = { minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat };
-		normalMap = new THREE.WebGLRenderTarget(rx, ry, pars);
-
-		uniformsNormal.height.value = 100;
-		uniformsNormal.resolution.value.set(rx,ry);
-		uniformsNormal.heightMap.value = heightMap;*/
 
        	// Terrain shader
         var terrainShader = THREE.ShaderTerrain[ 'terrain' ];
@@ -261,11 +229,10 @@
         	uniformsTerrain[ 'uDisplacementScale' ].value = 195.18;
         else
         	uniformsTerrain[ 'uDisplacementScale' ].value = height;
-        //uniformsTerrain[ 'uDisplacementBias' ].value = 1.0;
  
 		//uniformsTerrain[ 'enableDiffuse1' ].value = true;
 		//uniformsTerrain[ 'enableDiffuse2' ].value = true;
-		//uniformsTerrain[ 'enableSpecular' ].value = true;
+		uniformsTerrain[ 'enableSpecular' ].value = true;
 		
         uniformsTerrain[ 'tDiffuse1' ].value = diffuseTexture2;
         uniformsTerrain[ 'tDiffuse2' ].value = diffuseTexture2;
@@ -432,6 +399,9 @@
 		controls.handleResize();
 	}
 
+	/**
+	 *	In document mouse move handler for selecting objects in the scene.
+	 */
 	function onDocumentMouseMove(event){
 		event.preventDefault();
 
@@ -465,12 +435,12 @@
 		}
 	}
 
+	/**
+	 *	In document mouse key handler for selecting objects in the scene.
+	 */
 	function onDocumentMouseDown(event){
 		event.preventDefault();
 		event.stopPropagation();
-
-
-		//console.log("CLICK EVENT!");
 
 		switch ( event.button ) {
 
@@ -484,7 +454,6 @@
 				var intersects = raycaster.intersectObjects(labelsList);
 
 				if(intersects.length > 0){
-					console.log("Intersection selected!");
 					controls.enabled = false;
 
 					selection = intersects[0].object;
@@ -494,14 +463,13 @@
 					camera.position.z = selection.position.z - 200;
 					camera.lookAt(selection.position.x , 0, selection.position.z);
 				}
-
 				break;
-
 		}
-
-		//this.mouseDragOn = true;
 	}
 
+	/**
+	 *	In document mouse key handler for selecting objects in the scene.
+	 */
 	function onDocumentMouseUp(event){
 		event.preventDefault();
 		event.stopPropagation();
@@ -511,44 +479,6 @@
 		if(intersected){
 			intersected = null;
 		}
-	}
-
-	function onKeyDown (event) {
-
-		//event.preventDefault();
-
-		switch (event.keyCode) {
-			/*case 49: // 1 - go to Narvik
-				camera.position.x = COORD_NARVIK[0] + 500;//COORD_CENTER.x;
-				camera.position.y = 600;
-				camera.position.z = COORD_NARVIK[1] + 500;//COORD_CENTER.y;
-				camera.lookAt(COORD_NARVIK[0], 0, COORD_NARVIK[1]);
-				break;*/
-		}
-
-	}
-
-	function onKeyUp(event) {
-
-		switch(event.keyCode) {
-
-			//case 38: /*up*/
-			//case 87: /*W*/ this.moveForward = false; break;
-
-			//case 37: /*left*/
-			//case 65: /*A*/ this.moveLeft = false; break;
-
-			//case 40: /*down*/
-			//case 83: /*S*/ this.moveBackward = false; break;
-
-			//case 39: /*right*/
-			//case 68: /*D*/ this.moveRight = false; break;
-
-			//case 82: /*R*/ this.moveUp = false; break;
-			//case 70: /*F*/ this.moveDown = false; break;
-
-		}
-
 	}
 
 	/**
@@ -615,22 +545,6 @@
 		if(terrain.visible){
 			
 			controls.update(delta);
-			//console.log(camera.position);
-
-
-			/*var time = Date.now() * 0.001;
-			var fLow = 0.1, fHigh = 0.8;
-
-			lightVal = THREE.Math.clamp(lightVal + 0.5 * delta * lightDirection, fLow, fHigh);
-			var valNorm = (lightVal - fLow) / (fHigh - fLow);
-
-			directionalLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.1, 1.15);
-			spotLight.intensity = THREE.Math.mapLinear(valNorm, 0, 1, 0.9, 1.15);
-
-			uniformsTerrain['uNormalScale'].value = THREE.Math.mapLinear(valNorm, 0, 1, 0.6, 3.5);*/
-
-
-
 
 			renderer.render(scene,camera);
 		}
