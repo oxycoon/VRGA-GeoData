@@ -24,7 +24,7 @@
 	var projector, raycaster;
 
 	//GUI
-	var gui, cameraController = {};
+	var gui;
 
 	var terrain;
 	var materialLibrary = {};
@@ -34,12 +34,29 @@
 	var textureCounter = 0;
 
 
-	//Proj4 variables
+	//Proj4 constants
 	var WGS84_TO_UTM33 = '+proj=utm +zone=33 +ellps=WGS84 +datum=WGS84 +units=m +no_defs ';
 	var UTMXX_CENTER_X = 600000;
 	var UTMXX_CENTER_Y = 7600000;
 	var COORD_CENTER = {x:600000,y:7600000};
-	var COORD_NARVIK = proj4(WGS84_TO_UTM33, [17.435281,68.435675]); //5.999.869, 7.600.760
+
+	//Settlements
+	var COORD_NARVIK = proj4(WGS84_TO_UTM33, [17.427778,68.439167]); //[68.435675,17.435281]);//[17.435281,68.435675]); //5.999.869, 7.600.760
+	var COORD_BJERKVIK = proj4(WGS84_TO_UTM33, [17.550278,68.551944]);//[68.551944,17.550278,68]);//[17.550278,68.551944]);
+	var COORD_ANKENES = proj4(WGS84_TO_UTM33, [17.365111,68.421722]);//[68.421722,17.365111]);//[17.365111,68.421722]);
+
+	//Mountains
+	var COORD_SKJOMTIND = {x:596965,y:7583005};
+
+	var locations =  {city: 'Select city', mountain: 'Select mountain'};
+	var showLabels = {cities: true, mountains: true};
+
+	//Sprite tags
+	var tagNarvik;
+	var tagBjerkvik;
+	var tagAnkenes;
+
+	var tagSkjomtind;
 	
 	init();
 	render();
@@ -53,9 +70,9 @@
 		
 		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
 		//camera.z = 5;
-		camera.position.x = 410;//1000;
+		camera.position.x = 0;//1000;
 		camera.position.y = 400;
-		camera.position.z = 410;//1300;
+		camera.position.z = 0;//1300;
 		/*camera.position.x = COORD_NARVIK[0];//COORD_CENTER.x;
 		camera.position.y = 600;
 		camera.position.z = COORD_NARVIK[1];//COORD_CENTER.y;*/
@@ -66,6 +83,7 @@
 		document.body.appendChild(renderer.domElement);
 		
 		initControllers();
+		initGUI();
 		initLights();
 		
 
@@ -73,16 +91,30 @@
 		//addTerrainUsingHeightMap('res/maps/narvik.png');
 
 		//Sprites
-      	var narvikTag = makeTextSprite('Narvik', {fontsize: 128, borderColor: {r:255, g:255, b:255, a:1.0}, 
-        											backgroundColor: {r:255, g:255, b:255, a:1.0} } );
-        narvikTag.position.set(COORD_NARVIK[0], 2000, COORD_NARVIK[1]);
-        scene.add(narvikTag);
+      	tagNarvik = makeTextSprite('Narvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        tagNarvik.position.set((COORD_CENTER.x - COORD_NARVIK[0])/10, 200, (COORD_CENTER.y - COORD_NARVIK[1])/10);
+        scene.add(tagNarvik);
 
-        /*console.log(COORD_NARVIK);
-        console.log(COORD_CENTER);
-        console.log(narvikTag.position);	//599810, 7593417
-        console.log(terrain.position);*/
+      	tagBjerkvik = makeTextSprite('Bjerkvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        tagBjerkvik.position.set((COORD_CENTER.x - COORD_BJERKVIK[0])/10, 200, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
+        scene.add(tagBjerkvik);
 
+      	tagAnkenes = makeTextSprite('Ankenes', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        tagAnkenes.position.set((COORD_CENTER.x - COORD_ANKENES[0])/10, 200, (COORD_CENTER.y - COORD_ANKENES[1])/10);
+        scene.add(tagAnkenes);
+
+      	tagSkjomtind = makeTextSprite('Skjomtind', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
+        											backgroundColor: {r:255, g:255, b:255, a:0.7} } );
+        tagSkjomtind.position.set((COORD_CENTER.x - COORD_SKJOMTIND.x)/10, 200, (COORD_CENTER.y - COORD_SKJOMTIND.y)/10);
+        scene.add(tagSkjomtind);
+
+        /*console.log(tagSkjomtind.position);
+        console.log(tagNarvik.position);
+        console.log(tagAnkenes.position);
+        console.log(tagBjerkvik.position);*/
 
 	}
 
@@ -97,10 +129,6 @@
 		spotLight.position.y = 6000;
 		spotLight.position.z = -2000;
 		spotLight.intensity = 17.2;
-		/*spotLight.position.x = 605000;
-        spotLight.position.y = 80000;
-        spotLight.position.z = 7605000;
-        spotLight.intensity = 1.72;*/
         spotLight.target.position.set( 0, 0, 0 );
 
         //Shadows cast by spotlight
@@ -139,12 +167,13 @@
 		raycaster = new THREE.Raycaster();
 		projector = new THREE.Projector();
 
-		cameraController = {
-			x: 410,
-			y: 410,
-			height: 400
-		}
 
+	}
+
+	/**
+	 *	Initializes the GUI
+	 */
+	function initGUI(){
 		gui = new dat.GUI();
 
 		var guiFolder1 = gui.addFolder('Camera positions');
@@ -159,14 +188,29 @@
 		guiFolder2.add(camera.targetPosition, 'y', 0, 1000).listen();
 		guiFolder2.add(camera.targetPosition, 'z', -4100, 4100).listen();*/
 
+		var guiFolder3 = gui.addFolder('Preset locations');
+		guiFolder3.add(locations, 'city', ['Narvik', 'Bjerkvik', 'Ankenes']).name('Settlements').onChange(cityChanged);
+		guiFolder3.add(locations, 'mountain', ['Skjomtind'/*, 'Stetind', 'Linken'*/]).name('Mountains').onChange(mountainChanged);
 
-	}
+		var guiFolder4 = gui.addFolder('Toggle labels');
+		guiFolder4.add(showLabels,'cities').name('Settlements').onChange(function(value){
+			tagNarvik.visible = value;
+			tagAnkenes.visible = value;
+			tagBjerkvik.visible = value;
+		});
+		guiFolder4.add(showLabels, 'mountains').name('Mountains').onChange(function(value){
+			tagSkjomtind.visible = value;
+		});
+	}	
 	
 	/**
-	 *	
+	 *	Creates a 8192x8192 terrain based on a given heigthmap.
+	 *
 	 *	@param {string} path This string is the path to the height map to load.
+	 *	@param {number} height This double represents what the highest point of
+	 *		the heightmap is. Is set to 196.18 (10 meters) by default.
 	 */
-	function addTerrainUsingHeightMap(path){
+	function addTerrainUsingHeightMap(path, height){
 		// load the heightmap as a texture
 		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
  
@@ -208,7 +252,10 @@
         // the displacement determines the height of a vector, mapped to
         // the heightmap
         uniformsTerrain[ 'tDisplacement' ].value = heightMap;
-        uniformsTerrain[ 'uDisplacementScale' ].value = 195.18;
+        if(height == undefined)
+        	uniformsTerrain[ 'uDisplacementScale' ].value = 195.18;
+        else
+        	uniformsTerrain[ 'uDisplacementScale' ].value = height;
         //uniformsTerrain[ 'uDisplacementBias' ].value = 1.0;
  
 		//uniformsTerrain[ 'enableDiffuse1' ].value = true;
@@ -248,15 +295,12 @@
 			materialLibrary[parameters[i][0]] = material;
 		}
  
-        var geometryTerrain = new THREE.PlaneGeometry(819, 819, 256, 256);
+        var geometryTerrain = new THREE.PlaneGeometry(8192, 8192, 256, 256);
         geometryTerrain.computeTangents();
 
         terrain = new THREE.Mesh(geometryTerrain, materialLibrary['terrain']);
         terrain.position.set(0, -3, 0);
-        //terrain.position.set(COORD_CENTER.x, -3, COORD_CENTER.y);
         terrain.rotation.x = -Math.PI / 2;
-        //terrain.scale.set(100,100, 10);
-        terrain.scale.set(10, 10, 1);
         terrain.receiveShadow = true;
         terrain.castShadow = true;
 		terrain.visible = false;
@@ -396,7 +440,7 @@
 				break;*/
 		}
 
-	};
+	}
 
 	function onKeyUp( event ) {
 
@@ -419,12 +463,61 @@
 
 		}
 
-	};
+	}
+
+	/**
+	 *	GUI event handler for settlement jumping
+	 */
+	function cityChanged(){
+		var value = locations.city;
+
+		if(value == 'Narvik'){
+			camera.position.x = (COORD_CENTER.x - COORD_NARVIK[0])/10 - 200;
+			camera.position.y = 200;
+			camera.position.z = (COORD_CENTER.y - COORD_NARVIK[1])/10 - 200;
+			camera.lookAt((COORD_CENTER.x - COORD_NARVIK[0])/10 , 0, (COORD_CENTER.y - COORD_NARVIK[1])/10);
+		}
+		else if(value == 'Ankenes'){
+			camera.position.x = (COORD_CENTER.x - COORD_ANKENES[0])/10 - 200;
+			camera.position.y = 200;
+			camera.position.z = (COORD_CENTER.y - COORD_ANKENES[1])/10 - 200;
+			camera.lookAt((COORD_CENTER.x - COORD_ANKENES[0])/10 , 0, (COORD_CENTER.y - COORD_ANKENES[1])/10);
+		}
+		else if(value == 'Bjerkvik'){
+			camera.position.x = (COORD_CENTER.x - COORD_BJERKVIK[0])/10 - 200;
+			camera.position.y = 200;
+			camera.position.z = (COORD_CENTER.y - COORD_BJERKVIK[1])/10 - 200;
+			camera.lookAt((COORD_CENTER.x - COORD_BJERKVIK[0])/10 , 0, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
+		}
+	}
+
+	/**
+	 *	GUI event handler for mountain jumping
+	 */
+	function mountainChanged(){
+		var value = locations.mountain;
+
+		if(value == 'Skjomtind'){
+			camera.position.x = (COORD_CENTER.x - COORD_SKJOMTIND[0])/10 - 200;
+			camera.position.y = 200;
+			camera.position.z = (COORD_CENTER.y - COORD_SKJOMTIND[1])/10 - 200;
+			camera.lookAt((COORD_CENTER.x - COORD_SKJOMTIND[0])/10 , 0, (COORD_CENTER.y - COORD_SKJOMTIND[1])/10);
+		}
+		/*else if(value == 'Linken'){
+
+		}
+		else if(value == 'Stetind'){
+			
+		}*/
+	}
 
 	//--------------------------
 	//	Render and update logic
 	//--------------------------
 	
+	/**
+	 *	Render function
+	 */
 	function render(){
 		requestAnimationFrame(render);
 
@@ -454,10 +547,3 @@
 			renderer.render(scene,camera);
 		}
 	}
-
-	function guiChanged(){
-
-	}
-
-	
-
