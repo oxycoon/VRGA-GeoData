@@ -36,6 +36,9 @@
 	var materialLibrary = {};
 	var textureCounter = 0;
 
+	//Skybox
+	var sky, sunCircle;
+
 	//Clock
 	var clock = new THREE.Clock();
 	
@@ -74,11 +77,11 @@
 	function init(){
 		scene = new THREE.Scene();
 		
-		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
-		camera.position.x = 0;
-		camera.position.y = 400;
-		camera.position.z = 0;
-		camera.lookAt(scene.position);
+		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000000);
+		camera.position.x = 100;
+		camera.position.y = 2000;
+		camera.position.z = 2200;
+		camera.lookAt(0,0,0);
 		
 		renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
@@ -86,6 +89,7 @@
 		
 		initControllers();
 		initGUI();
+		initSky();
 		initLights();
 		addTerrainUsingHeightMap('res/maps/narvik_scale.png');
 
@@ -105,12 +109,17 @@
 		spotLight.position.y = 6000;
 		spotLight.position.z = -2000;
 		spotLight.intensity = 17.2;
+		//spotLight.castShadow = true;
         spotLight.target.position.set(0, 0, 0);
 		scene.add(spotLight);
 		
 		//Directional light
         directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
-        directionalLight.position.set(1000, 4000, 0); 
+        //directionalLight.position.set(1000, 4000, 0); 
+        directionalLight.position.set(sunCircle.position.x / 100, sunCircle.position.y / 100, sunCircle.position.z / 100);
+        //directionalLight.target.set(scene.position);
+        //directionalLight.castShadow = true;
+        //directionalLight.shadowCameraVisible = true;
         scene.add(directionalLight);
 
 		scene.add(new THREE.AmbientLight(0x111111));
@@ -143,12 +152,6 @@
 		guiFolder1.add(camera.position, 'y', 0, 1000).listen();
 		guiFolder1.add(camera.position, 'z', -4100, 4100).listen();
 
-		var guiFolder2 = gui.addFolder('Camera target');
-
-		/*guiFolder2.add(camera.targetPosition, 'x', -4100, 4100).listen();
-		guiFolder2.add(camera.targetPosition, 'y', 0, 1000).listen();
-		guiFolder2.add(camera.targetPosition, 'z', -4100, 4100).listen();*/
-
 		var guiFolder3 = gui.addFolder('Preset locations');
 		guiFolder3.add(locations, 'city', ['Narvik', 'Bjerkvik', 'Ankenes']).name('Settlements').onChange(cityChanged);
 		guiFolder3.add(locations, 'mountain', ['Skjomtind'/*, 'Stetind', 'Linken'*/]).name('Mountains').onChange(mountainChanged);
@@ -170,27 +173,94 @@
 	function initSprites(){
       	tagNarvik = makeTextSprite('Narvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
         											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagNarvik.position.set((COORD_CENTER.x - COORD_NARVIK[0])/10, 200, (COORD_CENTER.y - COORD_NARVIK[1])/10);
+        tagNarvik.position.set(-(COORD_CENTER.x - COORD_NARVIK[0])/10, 200, (COORD_CENTER.y - COORD_NARVIK[1])/10);
         scene.add(tagNarvik);
         labelsList.push(tagNarvik);
 
       	tagBjerkvik = makeTextSprite('Bjerkvik', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
         											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagBjerkvik.position.set((COORD_CENTER.x - COORD_BJERKVIK[0])/10, 200, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
+        tagBjerkvik.position.set(-(COORD_CENTER.x - COORD_BJERKVIK[0])/10, 200, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
         scene.add(tagBjerkvik);
         labelsList.push(tagBjerkvik);
 
       	tagAnkenes = makeTextSprite('Ankenes', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
         											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagAnkenes.position.set((COORD_CENTER.x - COORD_ANKENES[0])/10, 200, (COORD_CENTER.y - COORD_ANKENES[1])/10);
+        tagAnkenes.position.set(-(COORD_CENTER.x - COORD_ANKENES[0])/10, 200, (COORD_CENTER.y - COORD_ANKENES[1])/10);
         scene.add(tagAnkenes);
         labelsList.push(tagAnkenes);
 
       	tagSkjomtind = makeTextSprite('Skjomtind', {fontsize: 72, borderColor: {r:255, g:255, b:255, a:0.7}, 
         											backgroundColor: {r:255, g:255, b:255, a:0.7} });
-        tagSkjomtind.position.set((COORD_CENTER.x - COORD_SKJOMTIND.x)/10, 200, (COORD_CENTER.y - COORD_SKJOMTIND.y)/10);
+        tagSkjomtind.position.set(-(COORD_CENTER.x - COORD_SKJOMTIND.x)/10, 200, (COORD_CENTER.y - COORD_SKJOMTIND.y)/10);
         scene.add(tagSkjomtind);
         labelsList.push(tagSkjomtind);
+	}
+
+	/**
+	 *	Initializes skybox and it's controllers.
+	 *	http://threejs.org/examples/#webgl_shaders_sky
+	 */
+	function initSky(){
+		sky = new THREE.Sky();
+		scene.add(sky.mesh);
+
+		sunCircle = new THREE.Mesh( new THREE.SphereGeometry(20000, 30, 30),
+			new THREE.MeshBasicMaterial({color: 0xffffff, wireframe: false }));
+		sunCircle.position.y = -700000;
+		sunCircle.visible = true;
+		scene.add( sunCircle );
+
+						/// GUI
+
+		var effectController  = {
+			turbidity: 10,
+			reileigh: 2,
+			mieCoefficient: 0.005,
+			mieDirectionalG: 0.8,
+			luminance: 1,
+			inclination: 0.20, // elevation / inclination
+			azimuth: 0.25, // Facing front,					
+			sun: true
+		}
+
+		var distance = 400000;
+
+		function guiChanged() {
+			var uniforms = sky.uniforms;
+			uniforms.turbidity.value = effectController.turbidity;
+			uniforms.reileigh.value = effectController.reileigh;
+			uniforms.luminance.value = effectController.luminance;
+			uniforms.mieCoefficient.value = effectController.mieCoefficient;
+			uniforms.mieDirectionalG.value = effectController.mieDirectionalG;
+
+			var theta = Math.PI * (effectController.inclination - 0.5);
+			var phi = 2 * Math.PI * (effectController.azimuth - 0.5);
+
+			sunCircle.position.x = distance * Math.cos(phi);
+			sunCircle.position.y = distance * Math.sin(phi) * Math.sin(theta); 
+			sunCircle.position.z = distance * Math.sin(phi) * Math.cos(theta); 
+
+			sunCircle.visible = effectController.sun;
+
+			sky.uniforms.sunPosition.value.copy(sunCircle.position);
+
+		}
+
+
+		var guiFolder5 = gui.addFolder('Sky settings');
+
+
+		guiFolder5.add( effectController, "turbidity", 1.0, 20.0, 0.1 ).onChange( guiChanged );
+		guiFolder5.add( effectController, "reileigh", 0.0, 4, 0.001 ).onChange( guiChanged );
+		guiFolder5.add( effectController, "mieCoefficient", 0.0, 0.1, 0.001 ).onChange( guiChanged );
+		guiFolder5.add( effectController, "mieDirectionalG", 0.0, 1, 0.001 ).onChange( guiChanged );
+		guiFolder5.add( effectController, "luminance", 0.0, 2).onChange( guiChanged );;
+		guiFolder5.add( effectController, "inclination", 0, 1, 0.0001).onChange( guiChanged );
+		guiFolder5.add( effectController, "azimuth", 0, 1, 0.0001).onChange( guiChanged );
+		guiFolder5.add( effectController, "sun").onChange( guiChanged );
+		
+
+		guiChanged();
 	}
 	
 	/**
@@ -488,22 +558,22 @@
 		var value = locations.city;
 
 		if(value == 'Narvik'){
-			camera.position.x = (COORD_CENTER.x - COORD_NARVIK[0])/10 - 200;
+			camera.position.x = -(COORD_CENTER.x - COORD_NARVIK[0])/10 - 200;
 			camera.position.y = 200;
 			camera.position.z = (COORD_CENTER.y - COORD_NARVIK[1])/10 - 200;
-			camera.lookAt((COORD_CENTER.x - COORD_NARVIK[0])/10 , 0, (COORD_CENTER.y - COORD_NARVIK[1])/10);
+			camera.lookAt(-(COORD_CENTER.x - COORD_NARVIK[0])/10 , 0, (COORD_CENTER.y - COORD_NARVIK[1])/10);
 		}
 		else if(value == 'Ankenes'){
-			camera.position.x = (COORD_CENTER.x - COORD_ANKENES[0])/10 - 200;
+			camera.position.x = -(COORD_CENTER.x - COORD_ANKENES[0])/10 - 200;
 			camera.position.y = 200;
 			camera.position.z = (COORD_CENTER.y - COORD_ANKENES[1])/10 - 200;
-			camera.lookAt((COORD_CENTER.x - COORD_ANKENES[0])/10 , 0, (COORD_CENTER.y - COORD_ANKENES[1])/10);
+			camera.lookAt(-(COORD_CENTER.x - COORD_ANKENES[0])/10 , 0, (COORD_CENTER.y - COORD_ANKENES[1])/10);
 		}
 		else if(value == 'Bjerkvik'){
-			camera.position.x = (COORD_CENTER.x - COORD_BJERKVIK[0])/10 - 200;
+			camera.position.x = -(COORD_CENTER.x - COORD_BJERKVIK[0])/10 - 200;
 			camera.position.y = 200;
 			camera.position.z = (COORD_CENTER.y - COORD_BJERKVIK[1])/10 - 200;
-			camera.lookAt((COORD_CENTER.x - COORD_BJERKVIK[0])/10 , 0, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
+			camera.lookAt(-(COORD_CENTER.x - COORD_BJERKVIK[0])/10 , 0, (COORD_CENTER.y - COORD_BJERKVIK[1])/10);
 		}
 	}
 
@@ -514,10 +584,10 @@
 		var value = locations.mountain;
 
 		if(value == 'Skjomtind'){
-			camera.position.x = (COORD_CENTER.x - COORD_SKJOMTIND[0])/10 - 200;
+			camera.position.x = -(COORD_CENTER.x - COORD_SKJOMTIND[0])/10 - 200;
 			camera.position.y = 200;
 			camera.position.z = (COORD_CENTER.y - COORD_SKJOMTIND[1])/10 - 200;
-			camera.lookAt((COORD_CENTER.x - COORD_SKJOMTIND[0])/10 , 0, (COORD_CENTER.y - COORD_SKJOMTIND[1])/10);
+			camera.lookAt(-(COORD_CENTER.x - COORD_SKJOMTIND[0])/10 , 0, (COORD_CENTER.y - COORD_SKJOMTIND[1])/10);
 		}
 		/*else if(value == 'Linken'){
 
@@ -545,6 +615,9 @@
 		if(terrain.visible){
 			
 			controls.update(delta);
+
+			directionalLight.position.set(sunCircle.position.x / 100, sunCircle.position.y / 100, sunCircle.position.z / 100);
+			directionalLight.target.position.set(0,0,0);
 
 			renderer.render(scene,camera);
 		}
