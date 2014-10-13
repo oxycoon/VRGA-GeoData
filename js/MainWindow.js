@@ -79,7 +79,7 @@
 		
 		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000000);
 		camera.position.x = 100;
-		camera.position.y = 2000;
+		camera.position.y = 1000;
 		camera.position.z = 2200;
 		camera.lookAt(0,0,0);
 		
@@ -109,17 +109,14 @@
 		spotLight.position.y = 6000;
 		spotLight.position.z = -2000;
 		spotLight.intensity = 17.2;
-		//spotLight.castShadow = true;
+		spotLight.castShadow = true;
         spotLight.target.position.set(0, 0, 0);
 		scene.add(spotLight);
 		
 		//Directional light
         directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
-        //directionalLight.position.set(1000, 4000, 0); 
         directionalLight.position.set(sunCircle.position.x / 100, sunCircle.position.y / 100, sunCircle.position.z / 100);
-        //directionalLight.target.set(scene.position);
-        //directionalLight.castShadow = true;
-        //directionalLight.shadowCameraVisible = true;
+        directionalLight.castShadow = true;
         scene.add(directionalLight);
 
 		scene.add(new THREE.AmbientLight(0x111111));
@@ -273,7 +270,7 @@
 	function addTerrainUsingHeightMap(path, height){
 		// load the heightmap as a texture
 		var heightMap = THREE.ImageUtils.loadTexture(path, null, loadTextures);
- 
+
         // Loading textures
         var detailTexture = THREE.ImageUtils.loadTexture('res/textures/grass.JPG', null, loadTextures);
 		detailTexture.wrapS = detailTexture.wrapT = THREE.RepeatWrapping;
@@ -471,6 +468,8 @@
 
 	/**
 	 *	In document mouse move handler for selecting objects in the scene.
+	 *
+	 *	@param {object} event Event object. 
 	 */
 	function onDocumentMouseMove(event){
 		event.preventDefault();
@@ -507,6 +506,8 @@
 
 	/**
 	 *	In document mouse key handler for selecting objects in the scene.
+	 *
+	 *	@param {object} event Event object.  
 	 */
 	function onDocumentMouseDown(event){
 		event.preventDefault();
@@ -539,6 +540,8 @@
 
 	/**
 	 *	In document mouse key handler for selecting objects in the scene.
+	 *
+	 *	@param {object} event Event object. 
 	 */
 	function onDocumentMouseUp(event){
 		event.preventDefault();
@@ -608,9 +611,6 @@
 		requestAnimationFrame(render);
 
 		var delta = clock.getDelta();
-
-		//controls.update();
-		
 
 		if(terrain.visible){
 			
